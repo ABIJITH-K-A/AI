@@ -211,7 +211,7 @@ function updateHeartStatus() {
   if (avgBPM > 150) heartStatus = "TACHYCARDIA - Medical Review";
   else if (avgBPM < 50) heartStatus = "BRADYCARDIA - Dangerous";
   else if (avgBPM >= 60 && avgBPM <= 100) heartStatus = "NORMAL";
-  else heartStatus = "ABNORMAL";
+  else heartStatus = "NORMAL (MILD IRREGULARITY)";
 }
 
 function getLungStatus() {
