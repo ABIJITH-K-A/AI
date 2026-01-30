@@ -7,11 +7,9 @@ let analyser, audioCtx, source;
 let isAnalyzing = false;
 let ecgData = [];
 let bpmHistory = [];
-let qualityHistory = [];
 let beatTimes = [];
 let frameCount = 0;
 
-// ⚡ PERFORMANCE: Smaller FFT + Optimized processing
 startBtn.onclick = () => { fileInput.click(); };
 
 downloadBtn.onclick = () => {
@@ -31,37 +29,32 @@ fileInput.onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // ⚡ FAST UI UPDATE
   startBtn.textContent = '⚡ Processing...';
   startBtn.disabled = true;
   downloadBtn.disabled = true;
   
   try {
-    // ⚡ FAST DECODE - Pre-resume context
     const arrayBuffer = await file.arrayBuffer();
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ 
-      sampleRate: 22050 // ⚡ Lower sample rate = 2x faster
+      sampleRate: 22050 
     });
     await audioCtx.resume();
     
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     
-    // ⚡ OPTIMIZED ANALYSER SETUP
     source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024; // ⚡ 4x smaller = 4x faster
-    analyser.smoothingTimeConstant = 0.4; // ⚡ Faster smoothing
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.4;
     analyser.minDecibels = -90;
     analyser.maxDecibels = -10;
     
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
     
-    // ⚡ RESET + START
     ecgData = [];
     bpmHistory = [];
-    qualityHistory = [];
     beatTimes = [];
     frameCount = 0;
     
@@ -80,23 +73,9 @@ fileInput.onchange = async (e) => {
   }
 };
 
-// ⚡ ULTRA-FAST QUALITY CALCULATION
-const calculateQualityFast = (data, start, end) => {
-  let peaks = 0, total = 0, count = 0;
-  for (let i = start; i < end; i += 4) { // ⚡ Skip every 4th sample
-    total += data[i];
-    count++;
-    if (data[i] > 180 && data[i] > data[i-4] && data[i] > data[i+4]) peaks++;
-  }
-  const avg = total / count;
-  const quality = Math.max(0, Math.min(100, (peaks * 3 - Math.abs(avg - 128) * 0.3)));
-  return Math.round(quality);
-};
-
-// ⚡ OPTIMIZED QRS DETECTION
 const detectPeaksFast = (data, start, end) => {
   const peaks = [];
-  for (let i = start + 8; i < end - 8; i += 4) { // ⚡ Downsample 4x
+  for (let i = start + 8; i < end - 8; i += 4) {
     if (data[i] > 190 && 
         data[i] > data[i-4] && data[i] > data[i+4] &&
         data[i] > data[i-8] && data[i] > data[i+8]) {
@@ -108,7 +87,7 @@ const detectPeaksFast = (data, start, end) => {
 
 function updateBPMFast(newBPM) {
   bpmHistory.push(newBPM);
-  if (bpmHistory.length > 20) bpmHistory.shift(); // ⚡ Smaller history
+  if (bpmHistory.length > 20) bpmHistory.shift();
   
   const avg = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length);
   const minBPM = Math.min(...bpmHistory);
@@ -119,7 +98,6 @@ function updateBPMFast(newBPM) {
   document.getElementById('rangeBPM').textContent = `${minBPM}-${maxBPM}`;
 }
 
-// ⚡ MAIN FAST VISUALIZATION LOOP
 function visualizeECG() {
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
@@ -133,27 +111,17 @@ function visualizeECG() {
 
     frameCount++;
     
-    // ⚡ ULTRA-FAST DATA CAPTURE (every 3rd frame only)
     if (frameCount % 3 === 0) {
       analyser.getByteTimeDomainData(dataArray);
       
-      // ⚡ FAST ECG DATA
       const normalized = (dataArray[0] / 128 - 1) * 60;
       ecgData.push(normalized);
       if (ecgData.length > 3000) ecgData.shift();
 
-      // ⚡ FAST QUALITY (1/10th samples)
-      const quality = calculateQualityFast(dataArray, 0, 256);
-      qualityHistory.push(quality);
-      if (qualityHistory.length > 10) qualityHistory.shift();
-      document.getElementById('quality').textContent = 
-        `${Math.round(qualityHistory.reduce((a,b)=>a+b,0)/qualityHistory.length)}%`;
-
-      // ⚡ FAST QRS DETECTION (1/4 samples)
       const peaks = detectPeaksFast(dataArray, 0, bufferLength);
       peaks.forEach(peakIndex => {
-        const interval = frameCount * 16.67 - lastBeat; // ~60fps timing
-        if (interval > 18) { // 300ms min interval
+        const interval = frameCount * 16.67 - lastBeat;
+        if (interval > 18) {
           const bpm = Math.round(60000 / (interval * 16.67));
           if (bpm > 40 && bpm < 200) {
             updateBPMFast(bpm);
@@ -164,24 +132,26 @@ function visualizeECG() {
         }
       });
 
-      // ⚡ FAST CONFIDENCE
       const confidence = beatTimes.length > 3 ? 90 + Math.min(10, beatTimes.length) : 60;
       document.getElementById('confidence').textContent = `${confidence}%`;
     }
 
-    // ⚡ OPTIMIZED RENDERING (60fps smooth)
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ⚡ FAST GRID (fewer lines)
     ctx.strokeStyle = 'rgba(255,77,77,0.15)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let y = 0; y < canvas.height; y += 40) ctx.lineTo(canvas.width, y);
-    for (let x = 0; x < canvas.width; x += 80) ctx.lineTo(x, canvas.height);
+    for (let y = 0; y < canvas.height; y += 40) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+    }
+    for (let x = 0; x < canvas.width; x += 80) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+    }
     ctx.stroke();
 
-    // ⚡ Y-AXIS LABELS (cached)
     ctx.fillStyle = '#ff6666';
     ctx.font = '12px Courier';
     ctx.textAlign = 'center';
@@ -190,7 +160,6 @@ function visualizeECG() {
       ctx.fillText(labels[i], 20, canvas.height/2 - (i-3)*60 + 4);
     }
 
-    // ⚡ BASELINE
     ctx.strokeStyle = '#ff4d4d';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -198,7 +167,6 @@ function visualizeECG() {
     ctx.lineTo(canvas.width, canvas.height/2);
     ctx.stroke();
 
-    // ⚡ FAST WAVEFORM DRAW
     if (ecgData.length > 50) {
       ctx.lineWidth = 2.5;
       ctx.strokeStyle = '#ff4d4d';
@@ -220,7 +188,6 @@ function visualizeECG() {
       ctx.shadowBlur = 0;
     }
 
-    // ⚡ DYNAMIC DIAGNOSIS
     const diagnosis = bpmHistory.length > 5 ? 
       `✅ Stable Rhythm Detected | ${bpmHistory.length} beats analyzed` : 
       '🔍 Live Analysis Running...';
@@ -231,17 +198,14 @@ function visualizeECG() {
   drawFrame();
 }
 
-// ⚡ FAST REPORT GENERATION
 function drawFullECGReport(ctx, canvas) {
   const liveBPM = document.getElementById('liveBPM').textContent || 72;
   const avgBPM = document.getElementById('avgBPM').textContent || '-';
   const conf = document.getElementById('confidence').textContent || '94%';
-  const qual = document.getElementById('quality').textContent || '-';
   
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Header
   ctx.fillStyle = '#ff4d4d';
   ctx.font = 'bold 50px Segoe UI';
   ctx.textAlign = 'center';
@@ -252,7 +216,6 @@ function drawFullECGReport(ctx, canvas) {
   ctx.fillText(new Date().toLocaleString('en-IN'), canvas.width/2, 150);
   ctx.shadowBlur = 0;
   
-  // ⚡ FAST FULL ECG
   if (ecgData.length > 0) {
     ctx.strokeStyle = '#ff4d4d';
     ctx.lineWidth = 4;
@@ -270,12 +233,11 @@ function drawFullECGReport(ctx, canvas) {
     ctx.shadowBlur = 0;
   }
   
-  // Metrics Panel
   ctx.fillStyle = 'rgba(13,0,0,0.95)';
-  ctx.fillRect(60, 60, 420, 160);
+  ctx.fillRect(60, 60, 420, 140);
   ctx.strokeStyle = '#ff4d4d';
   ctx.lineWidth = 3;
-  ctx.strokeRect(60, 60, 420, 160);
+  ctx.strokeRect(60, 60, 420, 140);
   
   ctx.fillStyle = '#ff4d4d';
   ctx.font = 'bold 28px Segoe UI';
@@ -284,5 +246,4 @@ function drawFullECGReport(ctx, canvas) {
   ctx.fillText(`Live BPM: ${liveBPM}`, 90, 100);
   ctx.fillText(`Average: ${avgBPM}`, 90, 140);
   ctx.fillText(`Confidence: ${conf}`, 90, 180);
-  ctx.fillText(`Quality: ${qual}`, 90, 220);
 }
