@@ -1,6 +1,7 @@
 const canvas = document.getElementById('viz');
 const ctx = canvas.getContext('2d');
 const resetBtn = document.getElementById('reset');
+const fileInput = document.getElementById('fileInput');
 const micBtn = document.getElementById('micBtn');
 const downloadBtn = document.getElementById('download');
 let analyser, audioCtx, source, stream;
@@ -19,6 +20,56 @@ let beatThreshold = 90;
 resetBtn.onclick = resetEverything;
 micBtn.onclick = toggleMic;
 
+fileInput.onchange = async (e) => {
+  stopMic();
+  const file = e.target.files[0];
+  if (!file) return;
+
+  resetDisplays();
+  resetBtn.disabled = true;
+  micBtn.disabled = true;
+  downloadBtn.disabled = true;
+  document.getElementById('diagnosis').textContent = '⚡ Processing MP3...';
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
+    
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    audioDuration = audioBuffer.duration * 1000;
+    
+    source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.4;
+    
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    
+    isMicMode = false;
+    resetAnalysis();
+    source.start();
+    isAnalyzing = true;
+    
+    document.getElementById('diagnosis').textContent = '🔍 Analyzing MP3 file...';
+    visualizePCG();
+    
+    setTimeout(() => {
+      resetBtn.disabled = false;
+      micBtn.disabled = false;
+      downloadBtn.disabled = false;
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    document.getElementById('diagnosis').textContent = '❌ MP3 processing failed';
+    resetBtn.disabled = false;
+    micBtn.disabled = false;
+  }
+};
+
 function resetEverything() {
   stopMic();
   resetDisplays();
@@ -29,6 +80,7 @@ function resetEverything() {
     analysisComplete = false;
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  fileInput.value = '';
   document.getElementById('diagnosis').textContent = '🔄 Analysis Reset - Ready for new recording';
   downloadBtn.disabled = true;
   micBtn.disabled = false;
@@ -59,6 +111,7 @@ async function startMic() {
     micBtn.textContent = 'Stop Stethoscope';
     micBtn.classList.add('active');
     resetBtn.disabled = true;
+    fileInput.disabled = true;
     downloadBtn.disabled = false;
     document.getElementById('diagnosis').textContent = '🔍 Live Stethoscope - Place on chest';
     visualizePCG();
@@ -81,6 +134,7 @@ function stopMic() {
   micBtn.textContent = 'Live Stethoscope';
   micBtn.classList.remove('active');
   resetBtn.disabled = false;
+  fileInput.disabled = false;
   if (!analysisComplete) {
     document.getElementById('diagnosis').textContent = 'Analysis stopped';
   }
@@ -249,6 +303,15 @@ function visualizePCG() {
       lastStatsUpdate = currentTime;
     }
 
+    if (!isMicMode && elapsed >= audioDuration + 1000 && !analysisComplete) {
+      isAnalyzing = false;
+      analysisComplete = true;
+      updateStatsDisplay();
+      calculateLiveConfidence();
+      document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
+      return;
+    }
+
     ctx.fillStyle = '#0a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -399,4 +462,4 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillText('Time →', canvas.width-80, 1670);
 }
 
-console.log('✅ ENHANCED AI Stethoscope - Report w/ Graph + Reset!');
+console.log('✅ COMPLETE AI Stethoscope - MP3 + Live + Report!');
