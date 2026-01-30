@@ -40,15 +40,15 @@ async function startMic() {
     isMicMode = true;
     isAnalyzing = true;
     resetAnalysis();
-    micBtn.textContent = '🔴 Stop Mic';
+    micBtn.textContent = 'Stop input';
     micBtn.classList.add('active');
     startBtn.disabled = true;
     downloadBtn.disabled = false;
-    document.getElementById('diagnosis').textContent = '🎤 Live Microphone Analysis - Place stethoscope on chest';
+    document.getElementById('diagnosis').textContent = 'Live Input Analysis - Place stethoscope on chest';
     visualizeECG();
   } catch (err) {
-    console.error('Mic access denied:', err);
-    document.getElementById('diagnosis').textContent = '❌ Microphone access denied';
+    console.error('input access denied:', err);
+    document.getElementById('diagnosis').textContent = 'input access denied';
   }
 }
 
@@ -62,7 +62,7 @@ function stopMic() {
   }
   isMicMode = false;
   isAnalyzing = false;
-  micBtn.textContent = '🎤 Live Mic';
+  micBtn.textContent = 'Live Input';
   micBtn.classList.remove('active');
   startBtn.disabled = false;
   document.getElementById('diagnosis').textContent = 'Analysis stopped';
@@ -122,7 +122,7 @@ fileInput.onchange = async (e) => {
   } catch (error) {
     console.error('Error:', error);
     document.getElementById('diagnosis').textContent = '❌ Audio processing failed';
-    startBtn.textContent = '📁 Upload MP3';
+    startBtn.textContent = 'Upload MP3';
     startBtn.disabled = false;
     micBtn.disabled = false;
   }
