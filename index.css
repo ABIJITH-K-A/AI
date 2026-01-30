@@ -199,18 +199,14 @@ canvas {
   transition: color 0.3s ease;
 }
 
-.bpm-value.low, .avg-value.low, .conf-value.low { 
-  color: #ff6b6b; 
-}
-.bpm-value.medium, .avg-value.medium, .conf-value.medium { 
-  color: #ffd93d; 
-}
-.bpm-value.high, .avg-value.high, .conf-value.high { 
-  color: var(--primary-blue); 
-}
-.conf-value.low { color: #ff6b6b; }
-.conf-value.medium { color: #ffd93d; }
-.conf-value.high { color: var(--primary-blue); }
+.bpm-value.low, .avg-value.low { color: #ff6b6b; }
+.bpm-value.medium, .avg-value.medium { color: #ffd93d; }
+.bpm-value.high, .avg-value.high { color: var(--primary-blue); }
+
+/* Audio Quality specific colors */
+.audio-value.low { color: #ff6b6b; }
+.audio-value.medium { color: #ffd93d; }
+.audio-value.high { color: #00d4aa; }
 
 .metric-label {
   font-size: 0.85em;
