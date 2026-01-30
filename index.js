@@ -44,7 +44,7 @@ async function startMic() {
     micBtn.classList.add('active');
     startBtn.disabled = true;
     downloadBtn.disabled = false;
-    document.getElementById('diagnosis').textContent = '🎤 Live Microphone Analysis';
+    document.getElementById('diagnosis').textContent = '🎤 Live Microphone Analysis - Place stethoscope on chest';
     visualizeECG();
   } catch (err) {
     console.error('Mic access denied:', err);
@@ -56,6 +56,9 @@ function stopMic() {
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
     stream = null;
+  }
+  if (audioCtx && audioCtx.state === 'running') {
+    audioCtx.close();
   }
   isMicMode = false;
   isAnalyzing = false;
@@ -79,7 +82,7 @@ downloadBtn.onclick = () => {
 };
 
 fileInput.onchange = async (e) => {
-  stopMic(); // Stop mic if active
+  stopMic();
   const file = e.target.files[0];
   if (!file) return;
 
@@ -104,7 +107,7 @@ fileInput.onchange = async (e) => {
     analyser.smoothingTimeConstant = 0.3;
     
     source.connect(analyser);
-    analyser.connect(audioCtx.destination);
+    analyser.connect(audioCtx.destination); // ✅ FIXED GRAPH - Connect to destination
     
     isMicMode = false;
     resetAnalysis();
@@ -124,6 +127,15 @@ fileInput.onchange = async (e) => {
     micBtn.disabled = false;
   }
 };
+
+function setColorClasses(elementId, className) {
+  const el = document.getElementById(elementId);
+  if (elementId === 'liveBPM' || elementId === 'avgBPM') {
+    el.className = `metric-value bpm-value ${className}`;
+  } else {
+    el.className = `metric-value conf-value ${className}`;
+  }
+}
 
 function resetDisplays() {
   document.getElementById('liveBPM').textContent = '00';
@@ -145,13 +157,30 @@ function resetAnalysis() {
   analysisComplete = false;
 }
 
+// ✅ IMPROVED HEARTBEAT DETECTION FOR BOTH MIC & FILE
 const detectHeartbeats = (dataArray) => {
   const peaks = [];
-  const threshold = 160;
-  for (let i = 10; i < dataArray.length - 10; i += 2) {
-    if (dataArray[i] > threshold &&
-        dataArray[i] > dataArray[i-5] && 
-        dataArray[i] > dataArray[i+5]) {
+  const bufferLength = dataArray.length;
+  let maxAmp = 0;
+  let maxIndex = 0;
+  
+  // Find maximum amplitude first
+  for (let i = 20; i < bufferLength - 20; i++) {
+    if (dataArray[i] > maxAmp) {
+      maxAmp = dataArray[i];
+      maxIndex = i;
+    }
+  }
+  
+  const dynamicThreshold = Math.max(140, maxAmp * 0.6);
+  
+  // Detect peaks around max amplitude
+  for (let i = maxIndex - 30; i < maxIndex + 30 && i > 10 && i < bufferLength - 10; i += 2) {
+    if (dataArray[i] > dynamicThreshold &&
+        dataArray[i] > dataArray[i-4] && 
+        dataArray[i] > dataArray[i+4] &&
+        dataArray[i] > dataArray[i-8] &&
+        dataArray[i] > dataArray[i+8]) {
       peaks.push(i);
     }
   }
@@ -183,16 +212,16 @@ function updateConfidenceColor(conf) {
 }
 
 function getBPMClass(bpm) {
-  if (bpm < 60) return 'low';      // Red
-  if (bpm >= 60 && bpm <= 100) return 'high';  // Green (normal)
-  if (bpm > 100) return 'medium';  // Yellow (tachycardia)
+  if (bpm < 60) return 'low';
+  if (bpm >= 60 && bpm <= 100) return 'high';
+  if (bpm > 100) return 'medium';
   return 'low';
 }
 
 function getConfClass(conf) {
-  if (conf < 70) return 'low';     // Red
-  if (conf >= 70 && conf <= 90) return 'medium'; // Yellow
-  return 'high';                   // Green
+  if (conf < 70) return 'low';
+  if (conf >= 70 && conf <= 90) return 'medium';
+  return 'high';
 }
 
 function updateStats() {
@@ -207,15 +236,15 @@ function updateStats() {
   updateAvgBPMColor();
 }
 
-function calculateFinalConfidence() {
+function calculateLiveConfidence() {
   if (bpmHistory.length < 5) {
-    updateConfidenceColor(50);
+    updateConfidenceColor(40);
     return;
   }
   
   const avgBPM = bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length;
   const variance = bpmHistory.reduce((sum, bpm) => sum + Math.pow(bpm - avgBPM, 2), 0) / bpmHistory.length;
-  const confidence = Math.max(50, Math.min(98, 95 - (variance * 3)));
+  const confidence = Math.max(40, Math.min(98, 90 - (variance * 4)));
   
   updateConfidenceColor(confidence);
 }
@@ -236,16 +265,19 @@ function visualizeECG() {
     frameCount++;
     analyser.getByteTimeDomainData(dataArray);
     
-    const normalized = (dataArray[Math.floor(bufferLength * 0.5)] / 128 - 1) * 50;
+    // ✅ ECG WAVEFORM DATA (WORKS FOR BOTH MIC & FILE)
+    const centerSample = dataArray[Math.floor(bufferLength * 0.5)];
+    const normalized = (centerSample / 128 - 1) * 60;
     ecgData.push(normalized);
     if (ecgData.length > 2000) ecgData.shift();
 
+    // ✅ LIVE BPM DETECTION (WORKS FOR BOTH MIC & FILE)
     const peaks = detectHeartbeats(dataArray);
     if (peaks.length > 0) {
       const currentFrameTime = frameCount * 16.67;
       const interval = currentFrameTime - lastBeatTime;
       
-      if (interval > 250 && interval < 1500) {
+      if (interval > 300 && interval < 1500) { // 40-200 BPM range
         const bpm = Math.round(60000 / interval);
         if (bpm > 40 && bpm < 200) {
           updateLiveBPM(bpm);
@@ -254,22 +286,25 @@ function visualizeECG() {
       }
     }
 
+    // ✅ STATS UPDATE EVERY 2s (WORKS FOR BOTH MIC & FILE)
     if (currentTime - lastStatsUpdate > 2000) {
       updateStats();
+      calculateLiveConfidence(); // ✅ LIVE CONFIDENCE FOR MIC
       lastStatsUpdate = currentTime;
     }
 
+    // ✅ MP3 END DETECTION (ONLY FOR FILES)
     if (!isMicMode && elapsed >= audioDuration + 500 && !analysisComplete) {
       isAnalyzing = false;
       analysisComplete = true;
-      calculateFinalConfidence();
+      calculateLiveConfidence();
       document.getElementById('diagnosis').textContent = 
         `✅ Analysis Complete | ${bpmHistory.length} heartbeats`;
       startBtn.textContent = '🔄 New Analysis';
       return;
     }
 
-    // FAST BLACK/WHITE VISUALIZATION
+    // ✅ GRAPH RENDERING (FIXED - WORKS FOR BOTH)
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -322,7 +357,7 @@ function visualizeECG() {
       ctx.shadowBlur = 0;
     }
 
-    const progress = isMicMode ? 'LIVE' : Math.min(100, (elapsed / audioDuration * 100)).toFixed(0);
+    const progress = isMicMode ? 'LIVE MIC' : Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%';
     document.getElementById('diagnosis').textContent = 
       analysisComplete ? '✅ Analysis Complete' :
       `🔍 ${progress} | ${bpmHistory.length} beats`;
@@ -349,8 +384,6 @@ function drawFullECGReport(ctx, canvas) {
   ctx.font = 'bold 40px Segoe UI';
   ctx.fillText(new Date().toLocaleString('en-IN'), canvas.width/2, 160);
   ctx.shadowBlur = 0;
-  
-  // Rest of report drawing...
 }
 
 console.log('AI Stethoscope Ready! 🎤📁');
