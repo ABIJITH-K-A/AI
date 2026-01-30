@@ -7,7 +7,7 @@ let analyser, audioCtx, source;
 let isAnalyzing = false;
 let ecgData = [];
 let bpmHistory = [];
-let beatTimes = [];
+let lastBeatTime = 0; // 🆕 Fixed variable scope
 let frameCount = 0;
 let audioDuration = 0;
 let audioStartTime = 0;
@@ -33,40 +33,43 @@ fileInput.onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
+  // Reset all displays to 00
+  document.getElementById('liveBPM').textContent = '00';
+  document.getElementById('avgBPM').textContent = '00';
+  document.getElementById('rangeBPM').textContent = '00';
+  document.getElementById('confidence').textContent = '00';
+
   startBtn.textContent = '⚡ Processing...';
   startBtn.disabled = true;
   downloadBtn.disabled = true;
   
   try {
     const arrayBuffer = await file.arrayBuffer();
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ 
-      sampleRate: 22050 
-    });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     await audioCtx.resume();
     
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    audioDuration = audioBuffer.duration * 1000; // ms
+    audioDuration = audioBuffer.duration * 1000;
     
     source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.4;
-    analyser.minDecibels = -90;
-    analyser.maxDecibels = -10;
+    analyser.fftSize = 512; // 🆕 Reduced for faster processing
+    analyser.smoothingTimeConstant = 0.3;
     
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
     
+    // 🆕 Reset everything
     ecgData = [];
     bpmHistory = [];
-    beatTimes = [];
     frameCount = 0;
-    audioStartTime = performance.now();
-    lastStatsUpdate = 0;
+    audioStartTime = Date.now();
+    lastStatsUpdate = audioStartTime;
+    lastBeatTime = 0;
     analysisComplete = false;
     
-    source.start(0);
+    source.start();
     isAnalyzing = true;
     visualizeECG();
     
@@ -81,26 +84,33 @@ fileInput.onchange = async (e) => {
   }
 };
 
-const detectPeaksFast = (data, start, end) => {
+// 🆕 IMPROVED HEARTBEAT DETECTION
+const detectHeartbeats = (dataArray) => {
   const peaks = [];
-  for (let i = start + 8; i < end - 8; i += 2) {
-    if (data[i] > 195 && 
-        data[i] > data[i-4] && data[i] > data[i+4] &&
-        data[i] > data[i-8] && data[i] > data[i+8]) {
+  const threshold = 180; // 🆕 Lower threshold for heart sounds
+  
+  for (let i = 10; i < dataArray.length - 10; i += 2) {
+    if (dataArray[i] > threshold &&
+        dataArray[i] > dataArray[i-5] && 
+        dataArray[i] > dataArray[i+5] &&
+        dataArray[i-2] < threshold - 20 && // Valley before peak
+        dataArray[i+2] < threshold - 20) {  // Valley after peak
       peaks.push(i);
     }
   }
   return peaks;
 };
 
-// ✅ 1️⃣ LIVE BPM UPDATE
-function updateLiveBPM(newBPM) {
-  document.getElementById('liveBPM').textContent = newBPM;
+// ✅ 1️⃣ LIVE BPM (FIXED)
+function updateLiveBPM(bpm) {
+  document.getElementById('liveBPM').textContent = bpm;
+  bpmHistory.push(bpm);
+  if (bpmHistory.length > 30) bpmHistory.shift();
 }
 
-// ✅ 2️⃣ 5-SECOND STATS UPDATE
+// ✅ 2️⃣ AVG/MIN/MAX EVERY 2 SECONDS (REDUCED)
 function updateStats() {
-  if (bpmHistory.length === 0) return;
+  if (bpmHistory.length < 3) return;
   
   const avg = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length);
   const minBPM = Math.min(...bpmHistory);
@@ -110,39 +120,36 @@ function updateStats() {
   document.getElementById('rangeBPM').textContent = `${minBPM}-${maxBPM}`;
 }
 
-// ✅ 3️⃣ FINAL CONFIDENCE CALCULATION
+// ✅ 3️⃣ FINAL CONFIDENCE
 function calculateFinalConfidence() {
   if (bpmHistory.length < 5) {
-    document.getElementById('confidence').textContent = '45%';
+    document.getElementById('confidence').textContent = 'Low';
     return;
   }
   
   const avgBPM = bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length;
   const variance = bpmHistory.reduce((sum, bpm) => sum + Math.pow(bpm - avgBPM, 2), 0) / bpmHistory.length;
-  const stabilityScore = Math.max(0, 100 - (variance * 5));
-  const finalConf = Math.min(98, 60 + (stabilityScore * 0.4));
+  const confidence = Math.max(50, Math.min(98, 95 - (variance * 3)));
   
-  document.getElementById('confidence').textContent = `${Math.round(finalConf)}%`;
+  document.getElementById('confidence').textContent = `${Math.round(confidence)}%`;
 }
 
 function visualizeECG() {
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
-  let lastBeatFrame = 0;
 
   function drawFrame() {
-    const currentTime = performance.now();
+    const currentTime = Date.now();
     const elapsed = currentTime - audioStartTime;
     
-    // ✅ 4️⃣ END WHEN AUDIO FINISHES
-    if (elapsed >= audioDuration + 1000 && !analysisComplete) {
+    // ✅ 4️⃣ END ANALYSIS (REDUCED BUFFER)
+    if (elapsed >= audioDuration + 500 && !analysisComplete) {
       isAnalyzing = false;
       analysisComplete = true;
-      calculateFinalConfidence(); // Final confidence at end
+      calculateFinalConfidence();
       document.getElementById('diagnosis').textContent = 
-        `✅ Analysis Complete | ${bpmHistory.length} heartbeats analyzed`;
+        `✅ Analysis Complete | ${bpmHistory.length} heartbeats | ${Math.round(bpmHistory.reduce((a,b)=>a+b,0)/bpmHistory.length || 0)} BPM avg`;
       startBtn.textContent = '🔄 New Analysis';
-      startBtn.disabled = false;
       return;
     }
 
@@ -152,61 +159,64 @@ function visualizeECG() {
     }
 
     frameCount++;
-    
-    // ✅ 1️⃣ LIVE BPM DETECTION (Real-time)
-    if (frameCount % 2 === 0) {
-      analyser.getByteTimeDomainData(dataArray);
-      
-      const normalized = (dataArray[Math.floor(bufferLength/2)] / 128 - 1) * 60;
-      ecgData.push(normalized);
-      if (ecgData.length > 3000) ecgData.shift();
 
-      const peaks = detectPeaksFast(dataArray, 0, bufferLength);
-      peaks.forEach(peakIndex => {
-        const interval = frameCount - lastBeatFrame;
-        if (interval > 15 && interval < 80) { // 75-240 BPM range
-          const bpm = Math.round(60000 / (interval * 16.67));
-          if (bpm > 40 && bpm < 200) {
-            bpmHistory.push(bpm);
-            updateLiveBPM(bpm);
-            lastBeatFrame = frameCount;
-            if (bpmHistory.length > 100) bpmHistory.shift();
-          }
+    // 🆕 EVERY FRAME: FAST ANALYSIS (REDUCED MS)
+    analyser.getByteTimeDomainData(dataArray);
+    
+    // 🆕 ECG WAVEFORM
+    const normalized = (dataArray[Math.floor(bufferLength * 0.5)] / 128 - 1) * 40;
+    ecgData.push(normalized);
+    if (ecgData.length > 2000) ecgData.shift();
+
+    // ✅ 1️⃣ LIVE BPM DETECTION (EVERY FRAME - FIXED)
+    const peaks = detectHeartbeats(dataArray);
+    if (peaks.length > 0) {
+      const currentFrameTime = frameCount * 16.67;
+      const interval = currentFrameTime - lastBeatTime;
+      
+      if (interval > 250 && interval < 1500) { // 40-240 BPM range
+        const bpm = Math.round(60000 / interval);
+        if (bpm > 40 && bpm < 200) {
+          updateLiveBPM(bpm);
+          lastBeatTime = currentFrameTime;
         }
-      });
+      }
     }
 
-    // ✅ 2️⃣ 5-SECOND STATS UPDATE
-    if (currentTime - lastStatsUpdate > 5000) {
+    // ✅ 2️⃣ STATS EVERY 2 SECONDS (REDUCED FROM 5s)
+    if (currentTime - lastStatsUpdate > 2000) {
       updateStats();
       lastStatsUpdate = currentTime;
     }
 
-    // VISUALIZATION (unchanged)
+    // 🆕 FAST VISUALIZATION
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    ctx.strokeStyle = 'rgba(255,77,77,0.15)';
+    // Grid
+    ctx.strokeStyle = 'rgba(255,77,77,0.1)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let y = 0; y < canvas.height; y += 40) {
+    for (let y = 0; y < canvas.height; y += 50) {
       ctx.moveTo(0, y);
       ctx.lineTo(canvas.width, y);
     }
-    for (let x = 0; x < canvas.width; x += 80) {
+    for (let x = 0; x < canvas.width; x += 100) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
     }
     ctx.stroke();
 
+    // Labels
     ctx.fillStyle = '#ff6666';
-    ctx.font = '12px Courier';
+    ctx.font = 'bold 12px Courier';
     ctx.textAlign = 'center';
-    const labels = ['+2.5', '+2.0', '+1.5', '+1.0', '+0.5', '0', '-0.5'];
-    for (let i = 0; i < 7; i++) {
-      ctx.fillText(labels[i], 20, canvas.height/2 - (i-3)*60 + 4);
+    const labels = ['+2', '+1.5', '+1', '+0.5', '0', '-0.5'];
+    for (let i = 0; i < 6; i++) {
+      ctx.fillText(labels[i], 30, canvas.height/2 - (i-2.5)*50);
     }
 
+    // Center line
     ctx.strokeStyle = '#ff4d4d';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -214,20 +224,21 @@ function visualizeECG() {
     ctx.lineTo(canvas.width, canvas.height/2);
     ctx.stroke();
 
+    // 🆕 ECG WAVEFORM (FAST RENDER)
     if (ecgData.length > 50) {
       ctx.lineWidth = 2.5;
       ctx.strokeStyle = '#ff4d4d';
       ctx.shadowColor = '#ff4d4d';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       
-      const visible = 800;
+      const visible = 900;
       const sliceW = canvas.width / visible;
-      const start = Math.max(0, ecgData.length - visible);
+      const startIdx = Math.max(0, ecgData.length - visible);
       
-      for (let i = 0; i < visible && start+i < ecgData.length; i++) {
+      for (let i = 0; i < visible && startIdx + i < ecgData.length; i++) {
         const x = i * sliceW;
-        const y = canvas.height/2 - ecgData[start+i];
+        const y = canvas.height/2 - ecgData[startIdx + i];
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -235,11 +246,11 @@ function visualizeECG() {
       ctx.shadowBlur = 0;
     }
 
-    const progress = ((elapsed / audioDuration) * 100).toFixed(1);
-    const diagnosis = analysisComplete ? 
-      `✅ Complete | ${bpmHistory.length} beats | ${Math.round((bpmHistory.reduce((a,b)=>a+b,0)/bpmHistory.length)||0)} BPM avg` :
-      `🔍 Analyzing ${progress}% | ${bpmHistory.length} beats detected`;
-    document.getElementById('diagnosis').textContent = diagnosis;
+    // 🆕 PROGRESS DISPLAY
+    const progress = Math.min(100, (elapsed / audioDuration * 100)).toFixed(0);
+    document.getElementById('diagnosis').textContent = 
+      analysisComplete ? '✅ Analysis Complete' :
+      `🔍 Live Analysis ${progress}% | ${bpmHistory.length} beats`;
 
     requestAnimationFrame(drawFrame);
   }
@@ -247,33 +258,33 @@ function visualizeECG() {
 }
 
 function drawFullECGReport(ctx, canvas) {
-  const liveBPM = document.getElementById('liveBPM').textContent || 72;
-  const avgBPM = document.getElementById('avgBPM').textContent || '-';
-  const conf = document.getElementById('confidence').textContent || '94%';
+  const liveBPM = document.getElementById('liveBPM').textContent;
+  const avgBPM = document.getElementById('avgBPM').textContent;
+  const conf = document.getElementById('confidence').textContent;
   
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   ctx.fillStyle = '#ff4d4d';
-  ctx.font = 'bold 50px Segoe UI';
+  ctx.font = 'bold 60px Segoe UI';
   ctx.textAlign = 'center';
   ctx.shadowColor = '#ff4d4d';
-  ctx.shadowBlur = 15;
-  ctx.fillText('ECG ANALYSIS REPORT', canvas.width/2, 90);
-  ctx.font = '36px Segoe UI';
-  ctx.fillText(new Date().toLocaleString('en-IN'), canvas.width/2, 150);
+  ctx.shadowBlur = 20;
+  ctx.fillText('ECG ANALYSIS REPORT', canvas.width/2, 100);
+  ctx.font = 'bold 40px Segoe UI';
+  ctx.fillText(new Date().toLocaleString('en-IN'), canvas.width/2, 160);
   ctx.shadowBlur = 0;
   
   if (ecgData.length > 0) {
     ctx.strokeStyle = '#ff4d4d';
     ctx.lineWidth = 4;
     ctx.shadowColor = '#ff4d4d';
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 25;
     ctx.beginPath();
-    const scaleX = (canvas.width - 240) / ecgData.length;
+    const scaleX = (canvas.width - 300) / ecgData.length;
     for (let i = 0; i < ecgData.length; i++) {
-      const x = 120 + i * scaleX;
-      const y = canvas.height/2 - ecgData[i] * 1.5;
+      const x = 150 + i * scaleX;
+      const y = canvas.height/2 - ecgData[i] * 2;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -281,17 +292,20 @@ function drawFullECGReport(ctx, canvas) {
     ctx.shadowBlur = 0;
   }
   
+  // Stats box
   ctx.fillStyle = 'rgba(13,0,0,0.95)';
-  ctx.fillRect(60, 60, 420, 140);
+  ctx.fillRect(80, 80, 500, 160);
   ctx.strokeStyle = '#ff4d4d';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(60, 60, 420, 140);
+  ctx.lineWidth = 4;
+  ctx.strokeRect(80, 80, 500, 160);
   
   ctx.fillStyle = '#ff4d4d';
-  ctx.font = 'bold 28px Segoe UI';
+  ctx.font = 'bold 32px Segoe UI';
   ctx.textAlign = 'left';
-  ctx.shadowBlur = 8;
-  ctx.fillText(`Live BPM: ${liveBPM}`, 90, 100);
-  ctx.fillText(`Average: ${avgBPM}`, 90, 140);
-  ctx.fillText(`Confidence: ${conf}`, 90, 180);
+  ctx.shadowBlur = 10;
+  ctx.fillText(`Live BPM: ${liveBPM}`, 110, 120);
+  ctx.fillText(`Average: ${avgBPM}`, 110, 160);
+  ctx.fillText(`Confidence: ${conf}`, 110, 200);
 }
+
+console.log('AI Stethoscope Ready! 🚀');
