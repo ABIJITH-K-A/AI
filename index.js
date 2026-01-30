@@ -16,6 +16,7 @@ let audioStartTime = 0;
 let lastStatsUpdate = 0;
 let analysisComplete = false;
 let beatThreshold = 90;
+let sourceStarted = false; // NEW: Track source start
 
 resetBtn.onclick = resetEverything;
 micBtn.onclick = toggleMic;
@@ -34,7 +35,7 @@ fileInput.onchange = async (e) => {
   try {
     const arrayBuffer = await file.arrayBuffer();
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
+    await audioCtx.resume(); // CRITICAL: Resume context
     
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     audioDuration = audioBuffer.duration * 1000;
@@ -45,26 +46,39 @@ fileInput.onchange = async (e) => {
     analyser.fftSize = 1024;
     analyser.smoothingTimeConstant = 0.4;
     
+    // FIXED: Proper audio routing
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
     
     isMicMode = false;
     resetAnalysis();
-    source.start();
+    sourceStarted = true;
+    source.start(0); // Start immediately
     isAnalyzing = true;
     
     document.getElementById('diagnosis').textContent = '🔍 Analyzing MP3 file...';
-    visualizePCG();
+    visualizePCG(); // Start visualization immediately
     
+    // Enable controls after short delay
     setTimeout(() => {
       resetBtn.disabled = false;
       micBtn.disabled = false;
       downloadBtn.disabled = false;
-    }, 1000);
+    }, 2000);
+    
+    // Monitor completion
+    source.onended = () => {
+      if (!analysisComplete) {
+        analysisComplete = true;
+        isAnalyzing = false;
+        updateStatsDisplay();
+        document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
+      }
+    };
     
   } catch (error) {
     console.error('Error:', error);
-    document.getElementById('diagnosis').textContent = '❌ MP3 processing failed';
+    document.getElementById('diagnosis').textContent = '❌ MP3 processing failed: ' + error.message;
     resetBtn.disabled = false;
     micBtn.disabled = false;
   }
@@ -72,13 +86,16 @@ fileInput.onchange = async (e) => {
 
 function resetEverything() {
   stopMic();
+  if (source) source.stop();
   resetDisplays();
   resetAnalysis();
-  if (analyser) {
-    if (audioCtx && audioCtx.state === 'running') audioCtx.close();
-    isAnalyzing = false;
-    analysisComplete = false;
+  if (audioCtx && audioCtx.state === 'running') {
+    audioCtx.close();
+    audioCtx = null;
   }
+  isAnalyzing = false;
+  analysisComplete = false;
+  sourceStarted = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   fileInput.value = '';
   document.getElementById('diagnosis').textContent = '🔄 Analysis Reset - Ready for new recording';
@@ -97,8 +114,16 @@ function toggleMic() {
 
 async function startMic() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        sampleRate: 44100
+      }
+    });
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
+    
     source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 1024;
@@ -128,6 +153,7 @@ function stopMic() {
   }
   if (audioCtx && audioCtx.state === 'running') {
     audioCtx.close();
+    audioCtx = null;
   }
   isMicMode = false;
   isAnalyzing = false;
@@ -237,7 +263,8 @@ function visualizePCG() {
     const currentTime = Date.now();
     const elapsed = currentTime - audioStartTime;
     
-    if (!isAnalyzing || !analyser) {
+    // FIXED: Only analyze if audio context is active AND source is playing
+    if (!isAnalyzing || !analyser || audioCtx?.state !== 'running') {
       requestAnimationFrame(drawFrame);
       return;
     }
@@ -245,9 +272,9 @@ function visualizePCG() {
     frameCount++;
     analyser.getByteTimeDomainData(dataArray);
     
-    const centerIdx = Math.floor(bufferLength * 0.35);
-    const sample = dataArray[centerIdx];
-    const normalized = ((sample / 128) - 1) * 50;
+    // FIXED: Use full buffer analysis, not just center sample
+    const maxSample = Math.max(...dataArray);
+    const normalized = ((maxSample / 128) - 1) * 50;
     pcgData.push(normalized);
     
     if (pcgData.length > 1500) pcgData.shift();
@@ -262,7 +289,7 @@ function visualizePCG() {
         if (bpm >= 35 && bpm < 200) {
           updateLiveBPM(bpm);
           lastBeatTime = currentTimeMs;
-          beatThreshold = Math.max(70, Math.min(140, sample * 0.65));
+          beatThreshold = Math.max(70, Math.min(140, maxSample * 0.65));
         }
       }
     }
@@ -272,14 +299,19 @@ function visualizePCG() {
       lastStatsUpdate = currentTime;
     }
 
-    if (!isMicMode && elapsed >= audioDuration + 1000 && !analysisComplete) {
-      isAnalyzing = false;
-      analysisComplete = true;
-      updateStatsDisplay();
-      document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
-      return;
+    // Handle file completion
+    if (!isMicMode && source && sourceStarted && !analysisComplete) {
+      const sourceEnded = elapsed >= audioDuration + 2000;
+      if (sourceEnded) {
+        isAnalyzing = false;
+        analysisComplete = true;
+        updateStatsDisplay();
+        document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
+        return;
+      }
     }
 
+    // DRAWING CODE (unchanged)
     ctx.fillStyle = '#0a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -332,7 +364,7 @@ function visualizePCG() {
 
     const progress = isMicMode ? 'LIVE STETHOSCOPE' : 
                      (analysisComplete ? 'COMPLETE' : 
-                      Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%');
+                      audioDuration > 0 ? Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%' : 'PROCESSING');
     
     document.getElementById('diagnosis').textContent = 
       analysisComplete ? `✅ Analysis Complete | ${bpmHistory.length} heartbeats` :
@@ -343,6 +375,7 @@ function visualizePCG() {
   drawFrame();
 }
 
+// drawFullPCGReport function remains unchanged
 function drawFullPCGReport(ctx, canvas) {
   const liveBPM = document.getElementById('liveBPM').textContent;
   const avgBPM = document.getElementById('avgBPM').textContent;
@@ -406,7 +439,6 @@ function drawFullPCGReport(ctx, canvas) {
     ctx.beginPath();
     
     const graphWidth = canvas.width - 100;
-    const graphHeight = 950;
     const visibleSamples = 3000;
     const sliceWidth = graphWidth / visibleSamples;
     const startIdx = Math.max(0, pcgData.length - visibleSamples);
@@ -428,4 +460,4 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillText('Time →', canvas.width-80, 1670);
 }
 
-console.log('✅ COMPLETE AI Stethoscope - Clean Heart Rate Only!');
+console.log('✅ FIXED AI Stethoscope - Audio Analysis Working!');
