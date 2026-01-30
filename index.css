@@ -211,6 +211,54 @@ canvas {
   letter-spacing: 1px;
 }
 
+/* NEW: HEART & LUNG STATUS CONTAINERS */
+.status-heart, .status-lung {
+  margin: 20px auto;
+  max-width: 500px;
+  padding: 20px;
+  background: rgba(10, 26, 46, 0.95);
+  border: 2px solid var(--white-soft);
+  border-radius: 12px;
+  box-shadow: 0 15px 40px var(--blue-glow);
+  text-align: center;
+}
+
+.status-heart {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.status-lung {
+  border-color: #4a90b8;
+  background: rgba(74, 144, 184, 0.1);
+}
+
+.status-title {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--primary-blue);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.status-result {
+  font-size: 1.8em;
+  font-weight: 700;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 20px currentColor;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-result.normal { color: #4ade80; }
+.status-result.abnormal { color: #ffd93d; }
+.status-result.danger { color: #ff6b6b; }
+
 .footer {
   text-align: center;
   margin-top: 50px;
