@@ -62,7 +62,7 @@ h1 {
   flex-wrap: wrap;
 }
 
-.controls button {
+.controls button, .file-texture {
   padding: 18px 30px;
   font-size: 1.1em;
   border-radius: 8px;
@@ -89,6 +89,25 @@ h1 {
   box-shadow: 0 12px 35px rgba(255, 107, 107, 0.6);
 }
 
+#reset:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+  transform: none; 
+}
+
+.file-texture {
+  background: var(--gray-dark);
+  color: var(--white);
+  box-shadow: 0 8px 25px var(--gray-dark);
+}
+
+.file-texture:hover {
+  background: var(--white-soft);
+  color: var(--primary-blue);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px var(--blue-glow);
+}
+
 #micBtn {
   background: var(--gray-dark);
   color: var(--white);
@@ -107,6 +126,12 @@ h1 {
   animation: none;
   box-shadow: 0 0 30px var(--primary-blue);
   border-color: var(--white);
+}
+
+#micBtn:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+  animation: none; 
 }
 
 #download {
