@@ -17,9 +17,11 @@ let lastStatsUpdate = 0;
 let analysisComplete = false;
 let beatThreshold = 90;
 let sourceStarted = false;
-let lungData = []; // NEW: Lung analysis data
-let crackleCount = 0; // NEW: Crackle detection
-let wheezeEnergy = 0; // NEW: Wheeze detection
+let lungData = [];
+let crackleCount = 0;
+let wheezeEnergy = 0;
+let heartStatus = "Monitoring...";  // SEPARATE heart status
+let lungStatus = "Monitoring...";   // SEPARATE lung status
 
 resetBtn.onclick = resetEverything;
 micBtn.onclick = toggleMic;
@@ -46,7 +48,7 @@ fileInput.onchange = async (e) => {
     source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048; // Increased for lung analysis
+    analyser.fftSize = 2048;
     analyser.smoothingTimeConstant = 0.4;
     
     source.connect(analyser);
@@ -72,13 +74,12 @@ fileInput.onchange = async (e) => {
         analysisComplete = true;
         isAnalyzing = false;
         updateFullDiagnosis();
-        document.getElementById('diagnosis').textContent = `✅ Analysis Complete | Heart: ${getHeartStatus()} | Lungs: ${getLungStatus()}`;
       }
     };
     
   } catch (error) {
     console.error('Error:', error);
-    document.getElementById('diagnosis').textContent = '❌ MP3 processing failed: ' + error.message;
+    document.getElementById('diagnosis').textContent = '❌ MP3 processing failed';
     resetBtn.disabled = false;
     micBtn.disabled = false;
   }
@@ -96,9 +97,11 @@ function resetEverything() {
   isAnalyzing = false;
   analysisComplete = false;
   sourceStarted = false;
+  heartStatus = "Monitoring...";
+  lungStatus = "Monitoring...";
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   fileInput.value = '';
-  document.getElementById('diagnosis').textContent = '🔄 Analysis Reset - Ready for new recording';
+  document.getElementById('diagnosis').textContent = '🔄 Analysis Reset';
   downloadBtn.disabled = true;
   micBtn.disabled = false;
   resetBtn.disabled = false;
@@ -138,7 +141,7 @@ async function startMic() {
     resetBtn.disabled = true;
     fileInput.disabled = true;
     downloadBtn.disabled = false;
-    document.getElementById('diagnosis').textContent = '🔍 Live Stethoscope - Place on chest';
+    document.getElementById('diagnosis').textContent = '🔍 Live Analysis - Chest Placement';
     visualizePCG();
   } catch (err) {
     console.error('Mic access denied:', err);
@@ -161,9 +164,6 @@ function stopMic() {
   micBtn.classList.remove('active');
   resetBtn.disabled = false;
   fileInput.disabled = false;
-  if (!analysisComplete) {
-    document.getElementById('diagnosis').textContent = 'Analysis stopped';
-  }
 }
 
 downloadBtn.onclick = () => {
@@ -179,17 +179,10 @@ downloadBtn.onclick = () => {
   link.click();
 };
 
-function setColorClasses(elementId, className) {
-  const el = document.getElementById(elementId);
-  el.className = `metric-value bpm-value ${className}`;
-}
-
 function resetDisplays() {
   document.getElementById('liveBPM').textContent = '00';
   document.getElementById('avgBPM').textContent = '00';
   document.getElementById('rangeBPM').textContent = '00-00';
-  setColorClasses('liveBPM', '');
-  setColorClasses('avgBPM', '');
 }
 
 function resetAnalysis() {
@@ -204,34 +197,34 @@ function resetAnalysis() {
   lastBeatTime = 0;
   analysisComplete = false;
   beatThreshold = 90;
+  heartStatus = "Monitoring...";
+  lungStatus = "Monitoring...";
 }
 
-// NEW: Heart status detection
-function getHeartStatus() {
-  if (bpmHistory.length === 0) return 'Not Detected';
+// FIXED: Heart status with avg BPM calculation
+function updateHeartStatus() {
+  if (bpmHistory.length === 0) {
+    heartStatus = "Not Detected";
+    return;
+  }
   const avgBPM = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
   
-  if (avgBPM > 150) return '🚨 TACHYCARDIA - Medical Review Needed';
-  if (avgBPM < 50) return '🚨 BRADYCARDIA - Potentially Dangerous';
-  if (avgBPM >= 60 && avgBPM <= 100) return '✅ NORMAL';
-  return '⚠️ ABNORMAL';
+  if (avgBPM > 150) heartStatus = "🚨 TACHYCARDIA - Medical Review";
+  else if (avgBPM < 50) heartStatus = "🚨 BRADYCARDIA - Dangerous";
+  else if (avgBPM >= 60 && avgBPM <= 100) heartStatus = "✅ NORMAL";
+  else heartStatus = "⚠️ ABNORMAL";
 }
 
-// NEW: Lung status detection
 function getLungStatus() {
-  if (crackleCount > 5) return '🚨 CRACKLES - Fluid/Infection Suspected';
-  if (wheezeEnergy > 300) return '🚨 WHEEZES - Airway Obstruction';
-  if (lungData.length < 100) return 'Monitoring...';
-  return '✅ NORMAL VESICULAR';
+  if (crackleCount > 5) return "🚨 CRACKLES - Fluid/Infection";
+  if (wheezeEnergy > 300) return "🚨 WHEEZES - Obstruction";
+  if (lungData.length < 100) return "Monitoring...";
+  return "✅ NORMAL VESICULAR";
 }
 
-// NEW: Comprehensive diagnosis
 function updateFullDiagnosis() {
-  const heartStatus = getHeartStatus();
-  const lungStatus = getLungStatus();
-  
-  // Update rangeBPM to show diagnosis
-  document.getElementById('rangeBPM').textContent = heartStatus.includes('NORMAL') ? 'NORMAL' : 'ABNORMAL';
+  updateHeartStatus();
+  lungStatus = getLungStatus();
 }
 
 const detectHeartbeats = (dataArray) => {
@@ -257,39 +250,33 @@ function updateLiveBPM(bpm) {
   liveEl.textContent = bpm.toString().padStart(2, '0');
   bpmHistory.push(bpm);
   
-  if (bpmHistory.length > 30) bpmHistory.shift();
+  if (bpmHistory.length > 50) bpmHistory.shift(); // FIXED: Larger history
   
-  updateBPMColor(bpm, 'liveBPM');
+  updateHeartStatus(); // Update heart status
   updateStatsDisplay();
 }
 
 function updateStatsDisplay() {
-  if (bpmHistory.length < 2) return;
+  if (bpmHistory.length < 3) return; // FIXED: Need more beats for avg
   
   const avg = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
   const minBPM = Math.min(...bpmHistory);
   const maxBPM = Math.max(...bpmHistory);
   
-  document.getElementById('avgBPM').textContent = avg.toString().padStart(2, '0');
-  document.getElementById('rangeBPM').textContent = `${minBPM}-${maxBPM}`;
+  document.getElementById('avgBPM').textContent = avg.toString().padStart(2, '0'); // FIXED: Avg working
+  document.getElementById('rangeBPM').textContent = `${minBPM}-${maxBPM}`; // FIXED: Numerical range
   
-  updateBPMColor(avg, 'avgBPM');
-}
-
-function updateBPMColor(bpm, elementId) {
-  const el = document.getElementById(elementId);
-  let className = '';
-  if (bpm < 50) className = 'low';
-  else if (bpm >= 60 && bpm <= 100) className = 'high';
-  else className = 'medium';
-  
-  el.className = `metric-value bpm-value ${className}`;
+  // Color coding
+  const avgEl = document.getElementById('avgBPM');
+  avgEl.className = avg < 50 ? 'metric-value avg-value low' : 
+                    avg >= 60 && avg <= 100 ? 'metric-value avg-value high' : 
+                    'metric-value avg-value medium';
 }
 
 function visualizePCG() {
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
-  const freqData = new Uint8Array(bufferLength); // NEW: Frequency data for lungs
+  const freqData = new Uint8Array(bufferLength);
 
   function drawFrame() {
     const currentTime = Date.now();
@@ -302,32 +289,28 @@ function visualizePCG() {
 
     frameCount++;
     analyser.getByteTimeDomainData(dataArray);
-    analyser.getByteFrequencyData(freqData); // NEW: Lung frequency analysis
+    analyser.getByteFrequencyData(freqData);
     
-    // Heart waveform (time domain)
     const maxSample = Math.max(...dataArray);
     const normalized = ((maxSample / 128) - 1) * 50;
     pcgData.push(normalized);
     
     if (pcgData.length > 1500) pcgData.shift();
 
-    // NEW: Lung analysis (400-1000Hz range)
-    const lungStartBin = Math.floor(400 * bufferLength / audioCtx.sampleRate);
-    const lungEndBin = Math.floor(1000 * bufferLength / audioCtx.sampleRate);
+    // Lung analysis (400-1000Hz)
+    const sampleRate = audioCtx.sampleRate || 44100;
+    const lungStartBin = Math.floor(400 * bufferLength / sampleRate);
+    const lungEndBin = Math.floor(1000 * bufferLength / sampleRate);
     const lungEnergy = freqData.slice(lungStartBin, lungEndBin).reduce((a, b) => a + b, 0);
     lungData.push(lungEnergy);
     
     if (lungData.length > 200) lungData.shift();
 
-    // Crackle detection (high frequency bursts)
     if (freqData.slice(lungStartBin, lungEndBin).some(f => f > 180)) {
       crackleCount++;
     }
-    
-    // Wheeze detection (sustained high energy)
     wheezeEnergy = Math.max(0, wheezeEnergy * 0.95 + lungEnergy * 0.05);
 
-    // Heartbeat detection
     const peaks = detectHeartbeats(dataArray);
     if (peaks.length > 0) {
       const currentTimeMs = frameCount * (1000/60);
@@ -345,21 +328,17 @@ function visualizePCG() {
 
     if (currentTime - lastStatsUpdate > 1000) {
       updateStatsDisplay();
+      lungStatus = getLungStatus();
       lastStatsUpdate = currentTime;
     }
 
-    if (!isMicMode && source && sourceStarted && !analysisComplete) {
-      const sourceEnded = elapsed >= audioDuration + 2000;
-      if (sourceEnded) {
-        isAnalyzing = false;
-        analysisComplete = true;
-        updateFullDiagnosis();
-        document.getElementById('diagnosis').textContent = `✅ Complete | Heart: ${getHeartStatus()} | Lungs: ${getLungStatus()}`;
-        return;
-      }
+    if (!isMicMode && source && sourceStarted && !analysisComplete && elapsed >= audioDuration + 2000) {
+      isAnalyzing = false;
+      analysisComplete = true;
+      updateFullDiagnosis();
     }
 
-    // DRAWING (unchanged visualization)
+    // DRAWING
     ctx.fillStyle = '#0a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -410,15 +389,12 @@ function visualizePCG() {
       ctx.shadowBlur = 0;
     }
 
-    const heartStatus = getHeartStatus();
-    const lungStatus = getLungStatus();
     const progress = isMicMode ? 'LIVE' : 
-                     (analysisComplete ? 'COMPLETE' : 
-                      audioDuration > 0 ? Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%' : 'PROCESSING');
+                     analysisComplete ? 'COMPLETE' : 
+                     audioDuration > 0 ? Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%' : 'PROCESSING';
     
     document.getElementById('diagnosis').textContent = 
-      analysisComplete ? `✅ Complete | ${heartStatus} | ${lungStatus}` :
-      `🔍 ${progress} | Heart: ${heartStatus.split(' ')[0]} | Lungs: ${lungStatus.split(' ')[0]}`;
+      `🔍 ${progress} | Heart: ${heartStatus} | Lungs: ${lungStatus}`;
 
     requestAnimationFrame(drawFrame);
   }
@@ -428,8 +404,7 @@ function visualizePCG() {
 function drawFullPCGReport(ctx, canvas) {
   const liveBPM = document.getElementById('liveBPM').textContent;
   const avgBPM = document.getElementById('avgBPM').textContent;
-  const heartStatus = getHeartStatus();
-  const lungStatus = getLungStatus();
+  const rangeBPM = document.getElementById('rangeBPM').textContent;
   
   ctx.fillStyle = '#0a1a2e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -454,22 +429,19 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.textAlign = 'center';
   ctx.fillText(`Live HR: ${liveBPM} BPM`, canvas.width/2, 400);
   ctx.fillText(`Avg HR: ${avgBPM} BPM`, canvas.width/2, 490);
-  ctx.fillText(`Heart: ${heartStatus}`, canvas.width/2, 580);
-  ctx.fillText(`Lungs: ${lungStatus}`, canvas.width/2, 670);
+  ctx.fillText(`Range: ${rangeBPM} BPM`, canvas.width/2, 580);
+  ctx.fillText(`Heart Status: ${heartStatus}`, canvas.width/2, 670);  // SEPARATE HEART STATUS
+  ctx.fillText(`Lung Status: ${lungStatus}`, canvas.width/2, 760);   // SEPARATE LUNG STATUS
   
   ctx.fillStyle = '#1a2a3e';
-  ctx.fillRect(50, 720, canvas.width-100, 950);
+  ctx.fillRect(50, 820, canvas.width-100, 850);
   
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  for (let y = 0; y < 950; y += 60) {
-    ctx.moveTo(50, 720 + y);
-    ctx.lineTo(canvas.width-50, 720 + y);
-  }
-  for (let x = 0; x < canvas.width-100; x += 80) {
-    ctx.moveTo(50 + x, 720);
-    ctx.lineTo(50 + x, canvas.height-50);
+  for (let y = 0; y < 850; y += 60) {
+    ctx.moveTo(50, 820 + y);
+    ctx.lineTo(canvas.width-50, 820 + y);
   }
   ctx.stroke();
   
@@ -477,8 +449,8 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(50, 720 + 475);
-  ctx.lineTo(canvas.width-50, 720 + 475);
+  ctx.moveTo(50, 820 + 425);
+  ctx.lineTo(canvas.width-50, 820 + 425);
   ctx.stroke();
   
   if (pcgData.length > 100) {
@@ -496,7 +468,7 @@ function drawFullPCGReport(ctx, canvas) {
     
     for (let i = 0; i < visibleSamples && (startIdx + i) < pcgData.length; i++) {
       const x = 50 + i * sliceWidth;
-      const y = 720 + 475 - (pcgData[startIdx + i] * 20);
+      const y = 820 + 425 - (pcgData[startIdx + i] * 20);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -508,7 +480,6 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.font = 'bold 22px Courier';
   ctx.textAlign = 'center';
   ctx.fillText('PCG Waveform (20-150Hz Heart Sounds)', canvas.width/2, 1680);
-  ctx.fillText('Time →', canvas.width-80, 1670);
 }
 
-console.log('✅ AI Stethoscope - Heart + Lung Analysis COMPLETE!');
+console.log('✅ FIXED: Avg BPM + Numerical Range + Separate Status + PCG Report');
