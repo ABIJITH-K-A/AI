@@ -15,7 +15,7 @@ let audioDuration = 0;
 let audioStartTime = 0;
 let lastStatsUpdate = 0;
 let analysisComplete = false;
-let beatThreshold = 60; // HYPER-SENSITIVE: WAS 90
+let beatThreshold = 60; // HYPER-SENSITIVE
 let sourceStarted = false;
 let lungData = [];
 let crackleCount = 0;
@@ -48,8 +48,8 @@ fileInput.onchange = async (e) => {
     source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 4096; // HYPER-SENSITIVE: WAS 2048
-    analyser.smoothingTimeConstant = 0.2; // HYPER-SENSITIVE: WAS 0.4
+    analyser.fftSize = 4096; // HYPER-SENSITIVE
+    analyser.smoothingTimeConstant = 0.2; // HYPER-SENSITIVE
     
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
@@ -201,17 +201,28 @@ function resetAnalysis() {
   updateLungDisplay();
 }
 
+// FIXED: EXACT CLINICAL HEART CRITERIA
 function updateHeartStatus() {
   if (bpmHistory.length === 0) {
     heartStatus = "Not Detected";
     return;
   }
+  
+  // FIXED: Proper average BPM calculation
   const avgBPM = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
   
-  if (avgBPM > 150) heartStatus = "TACHYCARDIA - Medical Review";
-  else if (avgBPM < 50) heartStatus = "BRADYCARDIA - Dangerous";
-  else if (avgBPM >= 60 && avgBPM <= 100) heartStatus = "NORMAL";
-  else heartStatus = "NORMAL (MILD IRREGULARITY)";
+  // EXACT CLINICAL SPECIFICATION:
+  if (avgBPM >= 120 && avgBPM <= 150) {
+    heartStatus = "ABNORMAL - Medical Review Needed";
+  } else if (avgBPM > 150) {
+    heartStatus = "ABNORMAL - Medical Review Needed";
+  } else if (avgBPM < 40 || (avgBPM >= 40 && avgBPM <= 50)) {
+    heartStatus = "ABNORMAL - Potentially Dangerous";
+  } else if (avgBPM >= 60 && avgBPM <= 100) {
+    heartStatus = "NORMAL";
+  } else {
+    heartStatus = "ABNORMAL";
+  }
 }
 
 function getLungStatus() {
@@ -233,13 +244,13 @@ const detectHeartbeats = (dataArray) => {
   const peaks = [];
   const bufferLength = dataArray.length;
   
-  for (let i = 10; i < bufferLength - 10; i++) { // WAS 15 - NOW 10
+  for (let i = 10; i < bufferLength - 10; i++) {
     const sample = dataArray[i];
     
     if (sample > beatThreshold && 
-        sample > dataArray[i-3] &&   // WAS 5 - NOW 3
+        sample > dataArray[i-3] && 
         sample > dataArray[i+3] && 
-        sample > dataArray[i-7] &&   // WAS 10 - NOW 7
+        sample > dataArray[i-7] && 
         sample > dataArray[i+7]) {
       peaks.push(i);
     }
@@ -252,7 +263,7 @@ function updateHeartDisplay() {
   heartEl.textContent = heartStatus;
   heartEl.className = 'status-result ' + 
     (heartStatus.includes('NORMAL') ? 'normal' : 
-     heartStatus.includes('TACHYCARDIA') || heartStatus.includes('BRADYCARDIA') ? 'danger' : 'abnormal');
+     heartStatus.includes('TACHYCARDIA') || heartStatus.includes('BRADYCARDIA') || heartStatus.includes('Dangerous') ? 'danger' : 'abnormal');
 }
 
 function updateLungDisplay() {
@@ -356,6 +367,7 @@ function visualizePCG() {
       updateFullDiagnosis();
     }
 
+    // DRAWING
     ctx.fillStyle = '#0a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -410,8 +422,7 @@ function visualizePCG() {
                      analysisComplete ? 'COMPLETE' : 
                      audioDuration > 0 ? Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%' : 'PROCESSING';
     
-    document.getElementById('diagnosis').textContent = 
-      `🔍 ${progress}`;
+    document.getElementById('diagnosis').textContent = `🔍 ${progress}`;
 
     requestAnimationFrame(drawFrame);
   }
@@ -499,4 +510,4 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillText('PCG Waveform (20-150Hz Heart Sounds)', canvas.width/2, 1680);
 }
 
-console.log('HYPER-SENSITIVE AI STETHOSCOPE COMPLETE!');
+console.log('AI STETHOSCOPE - CLINICAL CRITERIA COMPLETE!');
