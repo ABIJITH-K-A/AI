@@ -14,8 +14,7 @@
     <p class="subtitle">Phonocardiography Analysis • Heart 20-150Hz • Murmurs 400Hz • Lungs 100-1000Hz</p>
     
     <div class="controls">
-      <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg" class="file-texture">
-      <button id="start">Upload Stethoscope MP3</button>
+      <button id="reset" class="reset-btn">Reset Analysis</button>
       <button id="micBtn" class="mic-btn">Live Stethoscope</button>
       <button id="download" class="download-btn" disabled>Download PCG Report</button>
     </div>
@@ -40,7 +39,7 @@
     </div>
     
     <canvas id="viz" width="1200" height="400"></canvas>
-    <p id="diagnosis" class="diagnosis">Upload stethoscope MP3 or use Live Stethoscope input for phonocardiography analysis</p>
+    <p id="diagnosis" class="diagnosis">Click Reset or use Live Stethoscope for phonocardiography analysis</p>
   </div>
   
   <div class="footer">

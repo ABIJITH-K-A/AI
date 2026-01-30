@@ -1,9 +1,8 @@
 const canvas = document.getElementById('viz');
 const ctx = canvas.getContext('2d');
-const startBtn = document.getElementById('start');
+const resetBtn = document.getElementById('reset');
 const micBtn = document.getElementById('micBtn');
 const downloadBtn = document.getElementById('download');
-const fileInput = document.getElementById('fileInput');
 let analyser, audioCtx, source, stream;
 let isAnalyzing = false;
 let isMicMode = false;
@@ -15,10 +14,26 @@ let audioDuration = 0;
 let audioStartTime = 0;
 let lastStatsUpdate = 0;
 let analysisComplete = false;
-let beatThreshold = 90;  // 🔧 LOWERED from 130 → 90 (more sensitive)
+let beatThreshold = 90;
 
-startBtn.onclick = () => { fileInput.click(); };
+resetBtn.onclick = resetEverything;
 micBtn.onclick = toggleMic;
+
+function resetEverything() {
+  stopMic();
+  resetDisplays();
+  resetAnalysis();
+  if (analyser) {
+    if (audioCtx && audioCtx.state === 'running') audioCtx.close();
+    isAnalyzing = false;
+    analysisComplete = false;
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('diagnosis').textContent = '🔄 Analysis Reset - Ready for new recording';
+  downloadBtn.disabled = true;
+  micBtn.disabled = false;
+  resetBtn.disabled = false;
+}
 
 function toggleMic() {
   if (isMicMode) {
@@ -35,7 +50,7 @@ async function startMic() {
     source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.4;  // 🔧 LOWERED from 0.6 → 0.4 (faster response)
+    analyser.smoothingTimeConstant = 0.4;
     
     source.connect(analyser);
     isMicMode = true;
@@ -43,7 +58,7 @@ async function startMic() {
     resetAnalysis();
     micBtn.textContent = 'Stop Stethoscope';
     micBtn.classList.add('active');
-    startBtn.disabled = true;
+    resetBtn.disabled = true;
     downloadBtn.disabled = false;
     document.getElementById('diagnosis').textContent = '🔍 Live Stethoscope - Place on chest';
     visualizePCG();
@@ -65,14 +80,16 @@ function stopMic() {
   isAnalyzing = false;
   micBtn.textContent = 'Live Stethoscope';
   micBtn.classList.remove('active');
-  startBtn.disabled = false;
-  document.getElementById('diagnosis').textContent = 'Analysis stopped';
+  resetBtn.disabled = false;
+  if (!analysisComplete) {
+    document.getElementById('diagnosis').textContent = 'Analysis stopped';
+  }
 }
 
 downloadBtn.onclick = () => {
   const fullCanvas = document.createElement('canvas');
-  fullCanvas.width = 2400;
-  fullCanvas.height = 1000;
+  fullCanvas.width = 2480;
+  fullCanvas.height = 1800;
   const fullCtx = fullCanvas.getContext('2d');
   drawFullPCGReport(fullCtx, fullCanvas);
   
@@ -80,53 +97,6 @@ downloadBtn.onclick = () => {
   link.download = `PCG-Report-${Date.now()}.png`;
   link.href = fullCanvas.toDataURL('image/png');
   link.click();
-};
-
-fileInput.onchange = async (e) => {
-  stopMic();
-  const file = e.target.files[0];
-  if (!file) return;
-
-  resetDisplays();
-  startBtn.textContent = '⚡ Processing...';
-  startBtn.disabled = true;
-  micBtn.disabled = true;
-  downloadBtn.disabled = true;
-  
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
-    
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    audioDuration = audioBuffer.duration * 1000;
-    
-    source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.4;  // 🔧 LOWERED from 0.6 → 0.4
-    
-    source.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    
-    isMicMode = false;
-    resetAnalysis();
-    source.start();
-    isAnalyzing = true;
-    
-    startBtn.textContent = '⚡ Live Analysis';
-    micBtn.disabled = false;
-    downloadBtn.disabled = false;
-    visualizePCG();
-    
-  } catch (error) {
-    console.error('Error:', error);
-    document.getElementById('diagnosis').textContent = '❌ Audio processing failed';
-    startBtn.textContent = 'Upload MP3';
-    startBtn.disabled = false;
-    micBtn.disabled = false;
-  }
 };
 
 function setColorClasses(elementId, className) {
@@ -156,21 +126,18 @@ function resetAnalysis() {
   lastStatsUpdate = audioStartTime;
   lastBeatTime = 0;
   analysisComplete = false;
-  beatThreshold = 90;  // 🔧 LOWERED from 130 → 90
+  beatThreshold = 90;
 }
 
-// 🔧 ULTRA-SENSITIVE HEARTBEAT DETECTION
 const detectHeartbeats = (dataArray) => {
   const peaks = [];
   const bufferLength = dataArray.length;
   
-  // Scan entire buffer for peaks (more sensitive windows)
-  for (let i = 15; i < bufferLength - 15; i++) {  // 🔧 REDUCED from 30 → 15
+  for (let i = 15; i < bufferLength - 15; i++) {
     const sample = dataArray[i];
     
-    // More sensitive peak detection criteria
     if (sample > beatThreshold && 
-        sample > dataArray[i-5] &&   // 🔧 TIGHTER from 10 → 5
+        sample > dataArray[i-5] && 
         sample > dataArray[i+5] && 
         sample > dataArray[i-10] && 
         sample > dataArray[i+10]) {
@@ -225,28 +192,15 @@ function updateConfidenceColor(conf) {
   el.className = `metric-value conf-value ${className}`;
 }
 
-function getBPMClass(bpm) {
-  if (bpm < 60) return 'low';
-  if (bpm >= 60 && bpm <= 100) return 'high';
-  if (bpm > 100) return 'medium';
-  return 'low';
-}
-
-function getConfClass(conf) {
-  if (conf < 70) return 'low';
-  if (conf >= 70 && conf <= 90) return 'medium';
-  return 'high';
-}
-
 function calculateLiveConfidence() {
-  if (bpmHistory.length < 3) {
-    updateConfidenceColor(30);
+  if (bpmHistory.length < 5) {
+    updateConfidenceColor(20);
     return;
   }
   
   const avgBPM = bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length;
   const variance = bpmHistory.reduce((sum, bpm) => sum + Math.pow(bpm - avgBPM, 2), 0) / bpmHistory.length;
-  const confidence = Math.max(20, Math.min(95, 85 - (variance * 3)));
+  const confidence = Math.max(15, Math.min(90, 75 - (variance * 1.5)));
   
   updateConfidenceColor(confidence);
 }
@@ -267,7 +221,6 @@ function visualizePCG() {
     frameCount++;
     analyser.getByteTimeDomainData(dataArray);
     
-    // PCG waveform from center frequencies (stethoscope optimized)
     const centerIdx = Math.floor(bufferLength * 0.35);
     const sample = dataArray[centerIdx];
     const normalized = ((sample / 128) - 1) * 50;
@@ -275,21 +228,17 @@ function visualizePCG() {
     
     if (pcgData.length > 1500) pcgData.shift();
 
-    // ULTRA-SENSITIVE BPM DETECTION
     const peaks = detectHeartbeats(dataArray);
     if (peaks.length > 0) {
       const currentTimeMs = frameCount * (1000/60);
       const intervalMs = currentTimeMs - lastBeatTime;
       
-      // Wider heart rate range: 35-200 BPM (300-1714ms intervals)
-      if (intervalMs > 300 && intervalMs < 1714) {  // 🔧 WIDENED from 333-1500
+      if (intervalMs > 300 && intervalMs < 1714) {
         const bpm = Math.round(60000 / intervalMs);
-        if (bpm >= 35 && bpm < 200) {  // 🔧 WIDENED from 40-180
+        if (bpm >= 35 && bpm < 200) {
           updateLiveBPM(bpm);
           lastBeatTime = currentTimeMs;
-          
-          // More aggressive dynamic threshold (lower minimum)
-          beatThreshold = Math.max(70, Math.min(140, sample * 0.65));  // 🔧 70-140, *0.65
+          beatThreshold = Math.max(70, Math.min(140, sample * 0.65));
         }
       }
     }
@@ -300,16 +249,6 @@ function visualizePCG() {
       lastStatsUpdate = currentTime;
     }
 
-    if (!isMicMode && elapsed >= audioDuration + 1000 && !analysisComplete) {
-      isAnalyzing = false;
-      analysisComplete = true;
-      updateStatsDisplay();
-      calculateLiveConfidence();
-      document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
-      return;
-    }
-
-    // Draw PCG waveform (unchanged)
     ctx.fillStyle = '#0a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -383,26 +322,81 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 65px Segoe UI';
+  ctx.font = 'bold 80px Segoe UI';
   ctx.textAlign = 'center';
   ctx.shadowColor = '#007c9d';
-  ctx.shadowBlur = 25;
-  ctx.fillText('PHONOCARDIOGRAPHY REPORT', canvas.width/2, 130);
+  ctx.shadowBlur = 30;
+  ctx.fillText('PHONOCARDIOGRAPHY REPORT', canvas.width/2, 120);
   
-  ctx.font = 'bold 42px Segoe UI';
+  ctx.font = 'bold 50px Segoe UI';
   ctx.fillText(new Date().toLocaleString('en-IN'), canvas.width/2, 200);
   
   ctx.shadowBlur = 0;
-  ctx.font = 'bold 38px Segoe UI';
+  ctx.font = 'bold 45px Segoe UI';
   ctx.fillStyle = '#007c9d';
-  ctx.fillText('Heart: 20-150Hz | Murmurs: ≤400Hz | Lungs: 100-1000Hz', canvas.width/2, 270);
+  ctx.fillText('Heart: 20-150Hz | Murmurs: ≤400Hz | Lungs: 100-1000Hz', canvas.width/2, 280);
   
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 55px Courier';
-  ctx.fillText(`Live HR: ${liveBPM} BPM`, canvas.width/2, 380);
-  ctx.fillText(`Avg HR: ${avgBPM} BPM`, canvas.width/2, 450);
-  ctx.fillText(`Range: ${rangeBPM} BPM`, canvas.width/2, 520);
-  ctx.fillText(`Quality: ${conf}`, canvas.width/2, 590);
+  ctx.font = 'bold 65px Courier';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Live HR: ${liveBPM} BPM`, canvas.width/2, 400);
+  ctx.fillText(`Avg HR: ${avgBPM} BPM`, canvas.width/2, 490);
+  ctx.fillText(`Range: ${rangeBPM} BPM`, canvas.width/2, 580);
+  ctx.fillText(`Quality: ${conf}`, canvas.width/2, 670);
+  
+  ctx.fillStyle = '#1a2a3e';
+  ctx.fillRect(50, 720, canvas.width-100, 950);
+  
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let y = 0; y < 950; y += 60) {
+    ctx.moveTo(50, 720 + y);
+    ctx.lineTo(canvas.width-50, 720 + y);
+  }
+  for (let x = 0; x < canvas.width-100; x += 80) {
+    ctx.moveTo(50 + x, 720);
+    ctx.lineTo(50 + x, canvas.height-50);
+  }
+  ctx.stroke();
+  
+  ctx.strokeStyle = '#4a90b8';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(50, 720 + 475);
+  ctx.lineTo(canvas.width-50, 720 + 475);
+  ctx.stroke();
+  
+  if (pcgData.length > 100) {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#007c9d';
+    ctx.shadowColor = '#007c9d';
+    ctx.shadowBlur = 25;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    
+    const graphWidth = canvas.width - 100;
+    const graphHeight = 950;
+    const visibleSamples = 3000;
+    const sliceWidth = graphWidth / visibleSamples;
+    const startIdx = Math.max(0, pcgData.length - visibleSamples);
+    
+    for (let i = 0; i < visibleSamples && (startIdx + i) < pcgData.length; i++) {
+      const x = 50 + i * sliceWidth;
+      const y = 720 + 475 - (pcgData[startIdx + i] * 20);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  
+  ctx.fillStyle = '#aaa';
+  ctx.font = 'bold 22px Courier';
+  ctx.textAlign = 'center';
+  ctx.fillText('PCG Waveform (20-150Hz Heart Sounds)', canvas.width/2, 1680);
+  ctx.fillText('Time →', canvas.width-80, 1670);
 }
 
-console.log('✅ ULTRA-SENSITIVE AI Stethoscope - Enhanced Detection!');
+console.log('✅ ENHANCED AI Stethoscope - Report w/ Graph + Reset!');
