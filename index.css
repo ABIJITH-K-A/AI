@@ -2,8 +2,8 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #0d0000;
-  color: #ff4d4d;
+  background: #000;
+  color: #fff;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -14,23 +14,23 @@ h1 {
   text-align: center;
   font-size: 2.8em;
   margin-bottom: 10px;
-  color: #ff4d4d;
+  color: #fff;
   font-weight: 700;
   letter-spacing: 2px;
-  text-shadow: 0 0 30px rgba(255, 77, 77, 0.5);
+  text-shadow: 0 0 30px rgba(255,255,255,0.5);
   animation: pulse 2s ease-in-out infinite alternate;
 }
 
 @keyframes pulse {
-  from { text-shadow: 0 0 20px rgba(255, 77, 77, 0.5); }
-  to { text-shadow: 0 0 40px rgba(255, 77, 77, 0.8), 0 0 60px rgba(255, 77, 77, 0.3); }
+  from { text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+  to { text-shadow: 0 0 40px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.3); }
 }
 
 .subtitle {
   text-align: center;
   margin-bottom: 30px;
   font-size: 1.2em;
-  color: #ff6666;
+  color: #ccc;
   font-weight: 400;
 }
 
@@ -38,83 +38,86 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   margin: 40px 0;
   flex-wrap: wrap;
 }
 
-/* ✅ 5️⃣ CHOOSE FILE BUTTON TEXTURE */
-.file-texture {
-  padding: 18px 35px;
+.file-texture, .controls button {
+  padding: 18px 30px;
   font-size: 1.1em;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-family: inherit;
   font-weight: 600;
-  border: 2px solid #ff4d4d;
-  background: linear-gradient(145deg, rgba(255,77,77,0.15), rgba(13,0,0,0.9));
-  color: #ff4d4d;
-  min-width: 220px;
+  border: 2px solid #fff;
+  min-width: 180px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  box-shadow: 0 8px 25px rgba(255, 77, 77, 0.3);
+}
+
+.file-texture {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  box-shadow: 0 8px 25px rgba(255,255,255,0.2);
 }
 
 .file-texture:hover {
-  background: linear-gradient(145deg, #ff4d4d, #cc3333);
-  color: white;
+  background: #fff;
+  color: #000;
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(255, 77, 77, 0.6);
-}
-
-.controls button {
-  padding: 18px 35px;
-  font-size: 1.1em;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: inherit;
-  font-weight: 600;
-  border: none;
-  min-width: 220px;
+  box-shadow: 0 12px 35px rgba(255,255,255,0.4);
 }
 
 #start {
-  background: linear-gradient(145deg, #ff4d4d, #cc3333);
-  color: white;
-  box-shadow: 0 8px 25px rgba(255, 77, 77, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 8px 25px rgba(255,255,255,0.3);
 }
 
 #start:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(255, 77, 77, 0.6);
+  box-shadow: 0 12px 35px rgba(255,255,255,0.5);
 }
 
 #start:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
+.mic-btn {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  animation: pulse-mic 2s infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  50% { box-shadow: 0 0 20px rgba(255,255,255,0.6); }
+}
+
+.mic-btn.active {
+  background: #00ff00;
+  color: #000;
+  animation: none;
+  box-shadow: 0 0 30px #00ff00;
+}
+
 .download-btn {
-  background: linear-gradient(145deg, #333, #1a1a1a);
-  color: #ff4d4d;
-  border: 2px solid #ff4d4d;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
 }
 
 .download-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #ff4d4d, #cc3333);
-  color: white;
+  background: #fff;
+  color: #000;
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(255, 77, 77, 0.6);
+  box-shadow: 0 12px 35px rgba(255,255,255,0.4);
 }
 
 canvas {
-  border: 3px solid #ff4d4d;
+  border: 3px solid #fff;
   border-radius: 12px;
-  box-shadow: 
-    0 0 40px rgba(255, 77, 77, 0.4),
-    inset 0 0 30px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 40px rgba(255,255,255,0.3), inset 0 0 30px rgba(0,0,0,0.8);
   background: #000;
   display: block;
   margin: 30px auto;
@@ -128,11 +131,11 @@ canvas {
   font-weight: 600;
   margin-top: 25px;
   padding: 25px;
-  background: rgba(13, 0, 0, 0.9);
-  border: 2px solid #ff4d4d;
+  background: rgba(0,0,0,0.9);
+  border: 2px solid #fff;
   border-radius: 12px;
-  color: #ff4d4d;
-  box-shadow: 0 10px 30px rgba(255, 77, 77, 0.2);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(255,255,255,0.1);
 }
 
 .status-bar {
@@ -140,10 +143,10 @@ canvas {
   justify-content: space-evenly;
   margin: 30px 0;
   padding: 25px;
-  background: rgba(13, 0, 0, 0.95);
-  border: 2px solid #ff4d4d;
+  background: rgba(0,0,0,0.95);
+  border: 2px solid #fff;
   border-radius: 12px;
-  box-shadow: 0 15px 40px rgba(255, 77, 77, 0.15);
+  box-shadow: 0 15px 40px rgba(255,255,255,0.1);
   flex-wrap: wrap;
   gap: 15px;
 }
@@ -157,15 +160,23 @@ canvas {
 .metric-value {
   font-size: 2.2em;
   font-weight: 700;
-  color: #ff4d4d;
-  text-shadow: 0 0 20px rgba(255, 77, 77, 0.7);
+  text-shadow: 0 0 20px currentColor;
   font-family: 'Courier New', monospace;
   margin-bottom: 5px;
+  transition: color 0.3s ease;
 }
+
+/* ✅ COLOR CODING */
+.bpm-value.low, .avg-value.low, .conf-value.low { color: #ff4444; }
+.bpm-value.medium, .avg-value.medium, .conf-value.medium { color: #ffaa00; }
+.bpm-value.high, .avg-value.high, .conf-value.high { color: #00ff88; }
+.conf-value.low { color: #ff4444; }
+.conf-value.medium { color: #ffaa00; }
+.conf-value.high { color: #00ff88; }
 
 .metric-label {
   font-size: 0.85em;
-  color: #ff6666;
+  color: #ccc;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -176,8 +187,8 @@ canvas {
   margin-top: 50px;
   padding: 25px;
   font-size: 1em;
-  color: #ff6666;
-  border-top: 1px solid rgba(255, 77, 77, 0.3);
+  color: #ccc;
+  border-top: 1px solid rgba(255,255,255,0.3);
 }
 
 @media (max-width: 768px) {

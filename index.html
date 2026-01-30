@@ -14,31 +14,32 @@
     
     <div class="controls">
       <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg" class="file-texture">
-      <button id="start">📁 Upload & Analyze MP3</button>
-      <button id="download" class="download-btn" disabled>💾 Download Full ECG Report</button>
+      <button id="start">📁 Upload MP3</button>
+      <button id="micBtn" class="mic-btn">🎤 Live Mic</button>
+      <button id="download" class="download-btn" disabled>💾 Download Report</button>
     </div>
     
     <div class="status-bar">
       <div class="metric">
-        <div class="metric-value" id="liveBPM">72</div>
+        <div class="metric-value bpm-value" id="liveBPM">00</div>
         <div class="metric-label">Live BPM</div>
       </div>
       <div class="metric">
-        <div class="metric-value" id="avgBPM">-</div>
+        <div class="metric-value avg-value" id="avgBPM">00</div>
         <div class="metric-label">Avg BPM</div>
       </div>
       <div class="metric">
-        <div class="metric-value" id="rangeBPM">-</div>
+        <div class="metric-value" id="rangeBPM">00</div>
         <div class="metric-label">Min-Max BPM</div>
       </div>
       <div class="metric">
-        <div class="metric-value" id="confidence">94%</div>
-        <div class="metric-label">Live Confidence</div>
+        <div class="metric-value conf-value" id="confidence">00</div>
+        <div class="metric-label">Confidence</div>
       </div>
     </div>
     
     <canvas id="viz" width="1200" height="400"></canvas>
-    <p id="diagnosis" class="diagnosis">Upload an MP3 file containing heart sounds to begin ECG analysis</p>
+    <p id="diagnosis" class="diagnosis">Upload MP3 or click Mic for live heart sound analysis</p>
   </div>
   
   <div class="footer">
