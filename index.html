@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Stethoscope - Professional Medical Diagnostic Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🩺 AI Stethoscope</h1>
+    <p class="subtitle">Upload MP3 Heart Sound File for Analysis</p>
+    
+    <div class="controls">
+      <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg">
+      <button id="start">📁 Upload & Analyze MP3</button>
+    </div>
+    
+    <div class="status-bar">
+      <div class="metric">
+        <div class="metric-value" id="bpm">72</div>
+        <div class="metric-label">BPM</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="confidence">94%</div>
+        <div class="metric-label">Accuracy</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="status">Ready</div>
+        <div class="metric-label">Status</div>
+      </div>
+    </div>
+    
+    <canvas id="viz" width="800" height="200"></canvas>
+    <p id="diagnosis" class="diagnosis">Upload an MP3 file containing heart sounds to begin ECG analysis</p>
+  </div>
+  
+  <div class="footer">
+    <p>Powered by AI • Developed for Medical Education • TN Web Rats © 2026</p>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>
