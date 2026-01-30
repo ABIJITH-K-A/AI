@@ -218,7 +218,7 @@ function getLungStatus() {
   if (crackleCount > 5) return "CRACKLES - Fluid/Infection";
   if (wheezeEnergy > 300) return "WHEEZES - Obstruction";
   if (lungData.length < 100) return "Monitoring...";
-  return "✅ NORMAL VESICULAR";
+  return "NORMAL VESICULAR";
 }
 
 function updateFullDiagnosis() {
