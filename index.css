@@ -43,6 +43,31 @@ h1 {
   flex-wrap: wrap;
 }
 
+/* ✅ 5️⃣ CHOOSE FILE BUTTON TEXTURE */
+.file-texture {
+  padding: 18px 35px;
+  font-size: 1.1em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  font-weight: 600;
+  border: 2px solid #ff4d4d;
+  background: linear-gradient(145deg, rgba(255,77,77,0.15), rgba(13,0,0,0.9));
+  color: #ff4d4d;
+  min-width: 220px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 25px rgba(255, 77, 77, 0.3);
+}
+
+.file-texture:hover {
+  background: linear-gradient(145deg, #ff4d4d, #cc3333);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(255, 77, 77, 0.6);
+}
+
 .controls button {
   padding: 18px 35px;
   font-size: 1.1em;
