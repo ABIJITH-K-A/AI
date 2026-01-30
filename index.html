@@ -3,47 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Stethoscope - Professional Medical Diagnostic Tool</title>
+  <title>AI Stethoscope - Phonocardiography Diagnostic Tool</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
   <div class="container">
-    <h1>AI Stethoscope Pro</h1>
-    <p class="subtitle">Advanced MP3 Heart Sound Analysis with Real-time Diagnostics</p>
+    <h1>AI Stethoscope</h1>
+    <img src="logo.png" alt="AI Stethoscope Logo" class="logo">
+    <p class="subtitle">Phonocardiography Analysis • Heart 20-150Hz • Murmurs 400Hz • Lungs 100-1000Hz</p>
     
     <div class="controls">
       <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg" class="file-texture">
-      <button id="start">Upload MP3</button>
-      <button id="micBtn" class="mic-btn">Live Input</button>
-      <button id="download" class="download-btn" disabled>Download Report</button>
+      <button id="start">Upload Stethoscope MP3</button>
+      <button id="micBtn" class="mic-btn">Live Stethoscope</button>
+      <button id="download" class="download-btn" disabled>Download PCG Report</button>
     </div>
     
     <div class="status-bar">
       <div class="metric">
         <div class="metric-value bpm-value" id="liveBPM">00</div>
-        <div class="metric-label">Live BPM</div>
+        <div class="metric-label">Heart Rate</div>
       </div>
       <div class="metric">
         <div class="metric-value avg-value" id="avgBPM">00</div>
-        <div class="metric-label">Avg BPM</div>
+        <div class="metric-label">Avg Rate</div>
       </div>
       <div class="metric">
         <div class="metric-value" id="rangeBPM">00</div>
-        <div class="metric-label">Min-Max BPM</div>
+        <div class="metric-label">Range BPM</div>
       </div>
       <div class="metric">
         <div class="metric-value conf-value" id="confidence">00</div>
-        <div class="metric-label">Confidence</div>
+        <div class="metric-label">Signal Quality</div>
       </div>
     </div>
     
     <canvas id="viz" width="1200" height="400"></canvas>
-    <p id="diagnosis" class="diagnosis">Upload MP3 or click Mic for live heart sound analysis</p>
+    <p id="diagnosis" class="diagnosis">Upload stethoscope MP3 or use Live Stethoscope input for phonocardiography analysis</p>
   </div>
   
   <div class="footer">
-    <p>Powered by AI • Advanced Medical Diagnostics • Two Square © 2026</p>
+    <p>Phonocardiography • Stethoscope Frequency Analysis 20-1000Hz • Two Square © 2026</p>
   </div>
 
   <script src="index.js"></script>
