@@ -15,21 +15,21 @@
     <div class="controls">
       <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg">
       <button id="start">📁 Upload & Analyze MP3</button>
-      <button id="download" class="download-btn" disabled>💾 Download ECG</button>
+      <button id="download" class="download-btn" disabled>💾 Download Full ECG Report</button>
     </div>
     
     <div class="status-bar">
       <div class="metric">
         <div class="metric-value" id="bpm">72</div>
-        <div class="metric-label">BPM</div>
+        <div class="metric-label">Heart Rate (BPM)</div>
       </div>
       <div class="metric">
         <div class="metric-value" id="confidence">94%</div>
-        <div class="metric-label">Accuracy</div>
+        <div class="metric-label">Diagnostic Confidence</div>
       </div>
       <div class="metric">
         <div class="metric-value" id="status">Ready</div>
-        <div class="metric-label">Status</div>
+        <div class="metric-label">System Status</div>
       </div>
     </div>
     
@@ -38,7 +38,7 @@
   </div>
   
   <div class="footer">
-    <p>Powered by AI • Developed for Medical Education • TN Web Rats © 2026</p>
+    <p>Powered by AI • Professional Medical Diagnostic Tool • TN Web Rats © 2026</p>
   </div>
 
   <script src="index.js"></script>
