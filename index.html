@@ -10,11 +10,12 @@
 <body>
   <div class="container">
     <h1>🩺 AI Stethoscope</h1>
-    <p class="subtitle">Upload MP3 Heart Sound File for Analysis</p>
+    <p class="subtitle">Upload MP3 Heart Sound File for ECG Analysis</p>
     
     <div class="controls">
       <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg">
       <button id="start">📁 Upload & Analyze MP3</button>
+      <button id="download" class="download-btn" disabled>💾 Download ECG</button>
     </div>
     
     <div class="status-bar">
@@ -32,7 +33,7 @@
       </div>
     </div>
     
-    <canvas id="viz" width="800" height="200"></canvas>
+    <canvas id="viz" width="1000" height="300"></canvas>
     <p id="diagnosis" class="diagnosis">Upload an MP3 file containing heart sounds to begin ECG analysis</p>
   </div>
   
