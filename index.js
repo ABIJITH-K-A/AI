@@ -9,7 +9,6 @@ let isAnalyzing = false;
 let isMicMode = false;
 let pcgData = [];
 let bpmHistory = [];
-let audioQualityHistory = [];
 let lastBeatTime = 0;
 let frameCount = 0;
 let audioDuration = 0;
@@ -156,28 +155,20 @@ downloadBtn.onclick = () => {
 
 function setColorClasses(elementId, className) {
   const el = document.getElementById(elementId);
-  if (elementId === 'liveBPM' || elementId === 'avgBPM') {
-    el.className = `metric-value bpm-value ${className}`;
-  } else if (elementId === 'audioQuality') {
-    el.className = `metric-value audio-value ${className}`;
-  }
+  el.className = `metric-value bpm-value ${className}`;
 }
 
 function resetDisplays() {
   document.getElementById('liveBPM').textContent = '00';
   document.getElementById('avgBPM').textContent = '00';
   document.getElementById('rangeBPM').textContent = '00-00';
-  document.getElementById('audioQuality').textContent = '00%';
   setColorClasses('liveBPM', '');
   setColorClasses('avgBPM', '');
-  setColorClasses('audioQuality', 'low');
-  audioQualityHistory = [];
 }
 
 function resetAnalysis() {
   pcgData = [];
   bpmHistory = [];
-  audioQualityHistory = [];
   frameCount = 0;
   audioStartTime = Date.now();
   lastStatsUpdate = audioStartTime;
@@ -203,44 +194,6 @@ const detectHeartbeats = (dataArray) => {
   }
   return peaks;
 };
-
-function calculateAudioQuality(dataArray) {
-  // Calculate RMS (Root Mean Square) for audio level
-  let sumSquares = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    const normalized = (dataArray[i] / 128) - 1; // Convert to -1 to 1 range
-    sumSquares += normalized * normalized;
-  }
-  const rms = Math.sqrt(sumSquares / dataArray.length);
-  
-  // Calculate signal-to-noise ratio approximation
-  const meanAbs = dataArray.reduce((sum, val) => sum + Math.abs(val - 128), 0) / dataArray.length;
-  const noiseFloor = 2; // Minimum detectable signal
-  const snr = 20 * Math.log10((rms * 100) / Math.max(noiseFloor, 0.01));
-  
-  // Calculate spectral flatness (1.0 = noise, 0.0 = tonal)
-  const freqData = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(freqData);
-  const geometricMean = Math.exp(
-    freqData.reduce((sum, val) => sum + Math.log(Math.max(val, 0.1)), 0) / freqData.length
-  );
-  const arithmeticMean = freqData.reduce((sum, val) => sum + val, 0) / freqData.length;
-  const spectralFlatness = geometricMean / arithmeticMean;
-  
-  // Combine metrics into quality score (0-100%)
-  const rmsScore = Math.min(95, rms * 200); // Good level
-  const snrScore = Math.min(30, Math.max(0, snr + 20)); // Good SNR
-  const flatnessPenalty = spectralFlatness > 0.7 ? 20 : 0; // Penalize noisy signals
-  
-  let quality = Math.max(0, Math.min(100, rmsScore + snrScore - flatnessPenalty));
-  
-  // Smooth with history (moving average)
-  audioQualityHistory.push(quality);
-  if (audioQualityHistory.length > 20) audioQualityHistory.shift();
-  
-  const avgQuality = audioQualityHistory.reduce((a, b) => a + b, 0) / audioQualityHistory.length;
-  return Math.round(avgQuality);
-}
 
 function updateLiveBPM(bpm) {
   const liveEl = document.getElementById('liveBPM');
@@ -276,17 +229,6 @@ function updateBPMColor(bpm, elementId) {
   el.className = `metric-value bpm-value ${className}`;
 }
 
-function updateAudioQualityColor(quality) {
-  const el = document.getElementById('audioQuality');
-  el.textContent = `${quality}%`;
-  
-  let className = 'low';
-  if (quality >= 60) className = 'medium';
-  if (quality >= 80) className = 'high';
-  
-  el.className = `metric-value audio-value ${className}`;
-}
-
 function visualizePCG() {
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
@@ -309,10 +251,6 @@ function visualizePCG() {
     pcgData.push(normalized);
     
     if (pcgData.length > 1500) pcgData.shift();
-
-    // Calculate and update audio quality
-    const quality = calculateAudioQuality(dataArray);
-    updateAudioQualityColor(quality);
 
     const peaks = detectHeartbeats(dataArray);
     if (peaks.length > 0) {
@@ -338,7 +276,7 @@ function visualizePCG() {
       isAnalyzing = false;
       analysisComplete = true;
       updateStatsDisplay();
-      document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats | Audio: ${audioQualityHistory[audioQualityHistory.length-1]?.toFixed(0)}%`;
+      document.getElementById('diagnosis').textContent = `✅ PCG Complete | ${bpmHistory.length} beats`;
       return;
     }
 
@@ -397,8 +335,8 @@ function visualizePCG() {
                       Math.min(100, (elapsed / audioDuration * 100)).toFixed(0) + '%');
     
     document.getElementById('diagnosis').textContent = 
-      analysisComplete ? `✅ Analysis Complete | ${bpmHistory.length} heartbeats | Audio: ${audioQualityHistory[audioQualityHistory.length-1]?.toFixed(0)}%` :
-      `🔍 ${progress} | Live: ${bpmHistory.length} beats | Q: ${Math.round(audioQualityHistory[audioQualityHistory.length-1] || 0)}%`;
+      analysisComplete ? `✅ Analysis Complete | ${bpmHistory.length} heartbeats` :
+      `🔍 ${progress} | Live: ${bpmHistory.length} beats`;
 
     requestAnimationFrame(drawFrame);
   }
@@ -409,7 +347,6 @@ function drawFullPCGReport(ctx, canvas) {
   const liveBPM = document.getElementById('liveBPM').textContent;
   const avgBPM = document.getElementById('avgBPM').textContent;
   const rangeBPM = document.getElementById('rangeBPM').textContent;
-  const audioQuality = document.getElementById('audioQuality').textContent;
   
   ctx.fillStyle = '#0a1a2e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -435,7 +372,6 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillText(`Live HR: ${liveBPM} BPM`, canvas.width/2, 400);
   ctx.fillText(`Avg HR: ${avgBPM} BPM`, canvas.width/2, 490);
   ctx.fillText(`Range: ${rangeBPM} BPM`, canvas.width/2, 580);
-  ctx.fillText(`Audio Quality: ${audioQuality}`, canvas.width/2, 670);
   
   ctx.fillStyle = '#1a2a3e';
   ctx.fillRect(50, 720, canvas.width-100, 950);
@@ -492,4 +428,4 @@ function drawFullPCGReport(ctx, canvas) {
   ctx.fillText('Time →', canvas.width-80, 1670);
 }
 
-console.log('✅ COMPLETE AI Stethoscope - Audio Quality Metric Added!');
+console.log('✅ COMPLETE AI Stethoscope - Clean Heart Rate Only!');

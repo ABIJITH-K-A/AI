@@ -203,11 +203,6 @@ canvas {
 .bpm-value.medium, .avg-value.medium { color: #ffd93d; }
 .bpm-value.high, .avg-value.high { color: var(--primary-blue); }
 
-/* Audio Quality specific colors */
-.audio-value.low { color: #ff6b6b; }
-.audio-value.medium { color: #ffd93d; }
-.audio-value.high { color: #00d4aa; }
-
 .metric-label {
   font-size: 0.85em;
   color: var(--gray);
