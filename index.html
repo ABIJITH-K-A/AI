@@ -3,72 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Stethoscope - Phonocardiography Diagnostic Tool</title>
+  <title>AI Stethoscope - Clinical Phonocardiography System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
   <div class="container">
-    <h1>AI Stethoscope</h1>
-    <img src="logo.png" alt="AI Stethoscope Logo" class="logo">
-    <p class="subtitle">Phonocardiography Analysis • Heart 20-150Hz • Murmurs 400Hz • Lungs 100-1000Hz</p>
+    <div class="header">
+      <h1>AI Stethoscope</h1>
+      <img src="logo.png" alt="Clinical Logo" class="logo">
+      <p class="subtitle">Phonocardiography Analysis System - Heart 20-150Hz | Lungs 100-1000Hz</p>
+    </div>
     
     <div class="controls">
-      <button id="reset" class="reset-btn">Reset Analysis</button>
-      <input type="file" id="fileInput" accept="audio/*" class="file-texture">
-      <button id="runBtn" class="run-btn">Run Analysis</button>
-      <button id="micBtn" class="mic-btn">Live Stethoscope</button>
-      <button id="download" class="download-btn" disabled>Download PCG Report</button>
+      <button id="reset" class="btn-control reset-btn">Reset</button>
+      <input type="file" id="fileInput" accept="audio/*" class="file-input">
+      <div class="analysis-controls">
+        <button id="runBtn" class="btn-control run-btn" disabled>Run Analysis</button>
+        <button id="stopBtn" class="btn-control stop-btn" disabled>Stop</button>
+      </div>
+      <button id="micBtn" class="btn-control mic-btn">Live Mode</button>
+      <button id="download" class="btn-control download-btn" disabled>Export Report</button>
     </div>
 
-    <!-- UPLOAD PROGRESS BAR -->
-    <div id="uploadProgress" class="upload-progress" style="display: none;">
-      <div class="progress-label">File Upload Progress</div>
-      <div class="progress-container">
+    <div id="uploadProgress" class="progress-section" style="display: none;">
+      <div class="progress-header">File Processing</div>
+      <div class="progress-bar-container">
         <div class="progress-bar" id="progressBar"></div>
       </div>
       <div class="progress-text" id="progressText">0%</div>
     </div>
     
-    <div class="status-bar">
-      <div class="metric">
-        <div class="metric-value bpm-value" id="liveBPM">00</div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-value" id="liveBPM">00</div>
         <div class="metric-label">Live BPM</div>
       </div>
-      <div class="metric">
-        <div class="metric-value avg-value" id="avgBPM">00</div>
-        <div class="metric-label">Avg BPM</div>
+      <div class="metric-card">
+        <div class="metric-value" id="avgBPM">00</div>
+        <div class="metric-label">Average</div>
       </div>
-      <div class="metric">
+      <div class="metric-card">
         <div class="metric-value" id="rangeBPM">00-00</div>
         <div class="metric-label">Range</div>
       </div>
     </div>
-    
-    <!-- LIVE BPM GRAPH ADDED -->
-    <div class="bpm-graph-container">
-      <div class="graph-title">Live BPM History (Last 30 beats)</div>
-      <canvas id="bpmGraph" width="1200" height="200"></canvas>
+
+    <div class="status-grid">
+      <div class="status-card heart-status">
+        <div class="status-header">Cardiac Assessment</div>
+        <div class="status-display" id="heartResult">Initializing...</div>
+      </div>
+      <div class="status-card lung-status">
+        <div class="status-header">Pulmonary Assessment</div>
+        <div class="status-display" id="lungResult">Initializing...</div>
+      </div>
     </div>
 
-    <div class="status-heart">
-      <div class="status-title">HEART STATUS</div>
-      <div class="status-result" id="heartResult">Monitoring...</div>
+    <div class="waveform-section">
+      <div class="waveform-header">Live PCG Waveform (20-150Hz Heart Sounds)</div>
+      <canvas id="pcgCanvas" width="1200" height="400"></canvas>
     </div>
-    
-    <div class="status-lung">
-      <div class="status-title">LUNG STATUS</div>
-      <div class="status-result" id="lungResult">Monitoring...</div>
+
+    <div class="system-status">
+      <span id="diagnosis">Upload audio file and click Run Analysis</span>
     </div>
-    
-    <canvas id="viz" width="1200" height="400"></canvas>
-    <p id="diagnosis" class="diagnosis">Upload MP3 then click Run Analysis, or use Live Stethoscope</p>
   </div>
 
-  <div class="footer">
-    <p>Phonocardiography • Stethoscope Frequency Analysis 20-1000Hz • Two Square 2026</p>
-  </div>
+  <footer class="footer">
+    <div>Clinical Phonocardiography Analysis System • Two Square Technologies 2026</div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="index.js"></script>
