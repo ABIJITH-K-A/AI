@@ -17,11 +17,12 @@
     <div class="controls">
       <button id="reset" class="reset-btn">Reset Analysis</button>
       <input type="file" id="fileInput" accept="audio/*" class="file-texture">
+      <button id="runBtn" class="run-btn">Run Analysis</button>
       <button id="micBtn" class="mic-btn">Live Stethoscope</button>
       <button id="download" class="download-btn" disabled>Download PCG Report</button>
     </div>
 
-    <!-- UPLOAD PROGRESS BAR ADDED -->
+    <!-- UPLOAD PROGRESS BAR -->
     <div id="uploadProgress" class="upload-progress" style="display: none;">
       <div class="progress-label">File Upload Progress</div>
       <div class="progress-container">
@@ -33,18 +34,24 @@
     <div class="status-bar">
       <div class="metric">
         <div class="metric-value bpm-value" id="liveBPM">00</div>
-        <div class="metric-label">Heart Rate</div>
+        <div class="metric-label">Live BPM</div>
       </div>
       <div class="metric">
         <div class="metric-value avg-value" id="avgBPM">00</div>
-        <div class="metric-label">Avg Rate</div>
+        <div class="metric-label">Avg BPM</div>
       </div>
       <div class="metric">
         <div class="metric-value" id="rangeBPM">00-00</div>
-        <div class="metric-label">Range BPM</div>
+        <div class="metric-label">Range</div>
       </div>
     </div>
     
+    <!-- LIVE BPM GRAPH ADDED -->
+    <div class="bpm-graph-container">
+      <div class="graph-title">Live BPM History (Last 30 beats)</div>
+      <canvas id="bpmGraph" width="1200" height="200"></canvas>
+    </div>
+
     <div class="status-heart">
       <div class="status-title">HEART STATUS</div>
       <div class="status-result" id="heartResult">Monitoring...</div>
@@ -56,7 +63,7 @@
     </div>
     
     <canvas id="viz" width="1200" height="400"></canvas>
-    <p id="diagnosis" class="diagnosis">Upload MP3 or use Live Stethoscope for phonocardiography analysis</p>
+    <p id="diagnosis" class="diagnosis">Upload MP3 then click Run Analysis, or use Live Stethoscope</p>
   </div>
 
   <div class="footer">
